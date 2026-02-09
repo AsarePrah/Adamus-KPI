@@ -27,7 +27,7 @@ def login(data: Dict[str, Any]):
         "user": {
             "name": username or "Admin User", 
             "role": "Admin",
-            "department": "IT" 
+            "department": "Milling_CIL" 
         }
     }
 

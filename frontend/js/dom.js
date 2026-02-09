@@ -6,7 +6,7 @@ const DOM = {
         const div = document.createElement('div');
         div.className = 'input-group';
         div.style.marginBottom = '10px';
-        
+
         const label = document.createElement('label');
         label.className = 'small';
         label.textContent = labelText;
@@ -14,13 +14,13 @@ const DOM = {
         label.style.marginBottom = '4px';
         label.style.fontSize = '12px';
         label.style.color = '#6b7280';
-        
+
         const input = document.createElement('input');
         input.id = id;
         input.type = type;
         input.placeholder = placeholder || labelText;
         input.className = 'form-input';
-        
+
         input.style.width = '100%';
         input.style.padding = '8px';
         input.style.border = '1px solid #d1d5db';
@@ -53,7 +53,7 @@ const DOM = {
     showToast: (message, type = 'success') => {
         let toast = document.getElementById('toast-msg');
         if (toast) toast.remove();
-        
+
         toast = document.createElement('div');
         toast.id = 'toast-msg';
         toast.textContent = message;
@@ -66,8 +66,16 @@ const DOM = {
         toast.style.backgroundColor = type === 'success' ? '#10b981' : '#ef4444';
         toast.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
         toast.style.zIndex = '1000';
-        
+
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 3000);
+    },
+
+    formatNumber: (val) => {
+        if (val === undefined || val === null || val === '') return '-';
+        if (typeof val === 'string' && val.includes('%')) return val;
+        const num = parseFloat(val);
+        if (isNaN(num)) return val;
+        return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
     }
 };

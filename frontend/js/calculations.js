@@ -9,7 +9,11 @@ function calculateVariance(actual, forecast) {
         return '';
     }
 
-    const variance = ((act - fc) / fc) * 100;
+    let variance = ((act - fc) / fc) * 100;
+
+    // Clamp variance between -100 and 100
+    variance = Math.max(-100, Math.min(100, variance));
+
     return Math.round(variance) + '%';
 }
 

@@ -8,7 +8,7 @@ const STATE = {
     currentMetric: "Gold Contained"
 };
 
-const DEPARTMENTS = ["Geology", "Mining", "Crushing", "Milling_CIL", "OHS", "Engineering", "IT", "GM_Report"];
+const DEPARTMENTS = ["Geology", "Mining", "Crushing", "Milling_CIL", "OHS", "Engineering", "GM_Report"];
 
 const DEPT_METRICS = {
     "Milling_CIL": [
@@ -57,7 +57,6 @@ const DEPT_METRICS = {
         "Crusher",
         "Mill"
     ],
-    "IT": [],
     "GM_Report": []
 };
 
@@ -810,11 +809,10 @@ function renderSidebar() {
                 <a href="#" onclick="logout()" style="color:var(--danger); font-size:12px; text-decoration:none;">Logout</a>
             </div>
         </div>
-        <ul style="list-style: none; padding: 0;">
             ${DEPARTMENTS.map(dept => `
                 <li style="margin-bottom: 10px;">
                     <a href="#" onclick="loadDepartmentView('${dept}')" 
-                       style="text-decoration: none; color: var(--text-primary); display: block; padding: 8px; border-radius: 6px;"
+                       style="text-decoration: none; color: var(--text-primary); display: block; padding: 8px; border-radius: 6px; ${dept === 'GM_Report' ? 'font-size: 14px;' : ''}"
                        onmouseover="this.style.backgroundColor='#f3f4f6'"
                        onmouseout="this.style.backgroundColor='transparent'">
                        ${dept.replace('_', ' ')}
@@ -1144,6 +1142,9 @@ function renderKPIForm(dept, metricName) {
     const title = document.createElement('h3');
     title.textContent = metricName;
     card.appendChild(title);
+
+    // MTD Status Cards
+    renderStatusCards(dept, metricName, card);
 
     // Differentiate form based on metric if needed
     if (metricName === "Fixed Inputs") {
@@ -8370,15 +8371,15 @@ async function loadRecentRecords(dept) {
                 tr.innerHTML = `
                     <td style="padding: 12px;">${dateDisplay}</td>
                     <td style="padding: 12px;">${r.data.num_rigs || '-'}</td>
-                    <td style="padding: 12px;">${r.data.daily_actual || '-'}</td>
-                    <td style="padding: 12px;">${r.data.daily_forecast || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_actual)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_forecast)}</td>
                     <td style="padding: 12px;">${r.data.var1 || '-'}</td>
-                    <td style="padding: 12px;">${r.data.mtd_actual || '-'}</td>
-                    <td style="padding: 12px;">${r.data.mtd_forecast || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.mtd_actual)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.mtd_forecast)}</td>
                     <td style="padding: 12px;">${r.data.var2 || '-'}</td>
-                    <td style="padding: 12px;">${r.data.outlook || '-'}</td>
-                    <td style="padding: 12px;">${r.data.full_forecast || '-'}</td>
-                    <td style="padding: 12px;">${r.data.full_budget || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.outlook)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.full_forecast)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.full_budget)}</td>
                     <td style="padding: 12px;">${r.data.var3 || '-'}</td>
                     <td style="padding: 12px;">
                         <button onclick="editRecord(${r.id})" style="margin-right:8px; padding:2px 6px; cursor:pointer;" title="Edit">✏️</button>
@@ -8431,16 +8432,16 @@ async function loadRecentRecords(dept) {
 
                 tr.innerHTML = `
                     <td style="padding: 12px;">${dateDisplay}</td>
-                    <td style="padding: 12px;">${r.data.wet_tonnes || '-'}</td>
-                    <td style="padding: 12px;">${r.data.daily_actual || '-'}</td>
-                    <td style="padding: 12px;">${r.data.daily_forecast || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.wet_tonnes)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_actual)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_forecast)}</td>
                     <td style="padding: 12px;">${r.data.var1 || '-'}</td>
-                    <td style="padding: 12px;">${r.data.mtd_actual || '-'}</td>
-                    <td style="padding: 12px;">${r.data.mtd_forecast || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.mtd_actual)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.mtd_forecast)}</td>
                     <td style="padding: 12px;">${r.data.var2 || '-'}</td>
-                    <td style="padding: 12px;">${r.data.outlook || '-'}</td>
-                    <td style="padding: 12px;">${r.data.full_forecast || '-'}</td>
-                    <td style="padding: 12px;">${r.data.full_budget || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.outlook)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.full_forecast)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.full_budget)}</td>
                     <td style="padding: 12px;">${r.data.var3 || '-'}</td>
                     <td style="padding: 12px;">${r.data.grade || '-'}</td>
                     <td style="padding: 12px;">${r.data.grade_7 || '-'}</td>
@@ -8493,15 +8494,15 @@ async function loadRecentRecords(dept) {
 
                 tr.innerHTML = `
                     <td style="padding: 12px;">${dateDisplay}</td>
-                    <td style="padding: 12px;">${r.data.daily_actual || '-'}</td>
-                    <td style="padding: 12px;">${r.data.daily_forecast || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_actual)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_forecast)}</td>
                     <td style="padding: 12px;">${r.data.var1 || '-'}</td>
-                    <td style="padding: 12px;">${r.data.mtd_actual || '-'}</td>
-                    <td style="padding: 12px;">${r.data.mtd_forecast || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.mtd_actual)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.mtd_forecast)}</td>
                     <td style="padding: 12px;">${r.data.var2 || '-'}</td>
-                    <td style="padding: 12px;">${r.data.outlook || '-'}</td>
-                    <td style="padding: 12px;">${r.data.full_forecast || '-'}</td>
-                    <td style="padding: 12px;">${r.data.full_budget || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.outlook)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.full_forecast)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.full_budget)}</td>
                     <td style="padding: 12px;">${r.data.var3 || '-'}</td>
                     <td style="padding: 12px;">
                         <button onclick="editRecord(${r.id})" style="margin-right:8px; padding:2px 6px; cursor:pointer;" title="Edit">✏️</button>
@@ -8551,16 +8552,16 @@ async function loadRecentRecords(dept) {
 
                 tr.innerHTML = `
                     <td style="padding: 12px;">${dateDisplay}</td>
-                    <td style="padding: 12px;">${r.data.daily_actual || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_actual)}</td>
                     <td style="padding: 12px;">${r.data.daily_act_grade || '-'}</td>
-                    <td style="padding: 12px;">${r.data.daily_forecast || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_forecast)}</td>
                     <td style="padding: 12px;">${r.data.var1 || '-'}</td>
-                    <td style="padding: 12px;">${r.data.mtd_actual || '-'}</td>
-                    <td style="padding: 12px;">${r.data.mtd_forecast || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.mtd_actual)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.mtd_forecast)}</td>
                     <td style="padding: 12px;">${r.data.var2 || '-'}</td>
-                    <td style="padding: 12px;">${r.data.outlook || '-'}</td>
-                    <td style="padding: 12px;">${r.data.full_forecast || '-'}</td>
-                    <td style="padding: 12px;">${r.data.full_budget || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.outlook)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.full_forecast)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.full_budget)}</td>
                     <td style="padding: 12px;">${r.data.var3 || '-'}</td>
                     <td style="padding: 12px;">
                         <button onclick="editRecord(${r.id})" style="margin-right:8px; padding:2px 6px; cursor:pointer;" title="Edit">✏️</button>
@@ -8611,16 +8612,16 @@ async function loadRecentRecords(dept) {
                 // Note: Saved as daily_act_tonnes (Tonnage) and daily_actual (Grade)
                 tr.innerHTML = `
                     <td style="padding: 12px;">${dateDisplay}</td>
-                    <td style="padding: 12px;">${r.data.daily_act_tonnes || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_act_tonnes)}</td>
                     <td style="padding: 12px;">${r.data.daily_actual || '-'}</td>
-                    <td style="padding: 12px;">${r.data.daily_forecast || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_forecast)}</td>
                     <td style="padding: 12px;">${r.data.var1 || '-'}</td>
-                    <td style="padding: 12px;">${r.data.mtd_actual || '-'}</td>
-                    <td style="padding: 12px;">${r.data.mtd_forecast || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.mtd_actual)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.mtd_forecast)}</td>
                     <td style="padding: 12px;">${r.data.var2 || '-'}</td>
-                    <td style="padding: 12px;">${r.data.outlook || '-'}</td>
-                    <td style="padding: 12px;">${r.data.full_forecast || '-'}</td>
-                    <td style="padding: 12px;">${r.data.full_budget || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.outlook)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.full_forecast)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.full_budget)}</td>
                     <td style="padding: 12px;">${r.data.var3 || '-'}</td>
                     <td style="padding: 12px;">
                         <button onclick="editRecord(${r.id})" style="margin-right:8px; padding:2px 6px; cursor:pointer;" title="Edit">✏️</button>
@@ -8669,16 +8670,75 @@ async function loadRecentRecords(dept) {
                 // Note: Using specific keys saved in renderMiningMaterialForm (daily_var, mtd_var, budget_var)
                 tr.innerHTML = `
                     <td style="padding: 12px;">${dateDisplay}</td>
-                    <td style="padding: 12px;">${r.data.daily_actual || '-'}</td>
-                    <td style="padding: 12px;">${r.data.daily_forecast || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_actual)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_forecast)}</td>
                     <td style="padding: 12px;">${r.data.daily_var || '-'}</td>
-                    <td style="padding: 12px;">${r.data.mtd_actual || '-'}</td>
-                    <td style="padding: 12px;">${r.data.mtd_forecast || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.mtd_actual)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.mtd_forecast)}</td>
                     <td style="padding: 12px;">${r.data.mtd_var || '-'}</td>
-                    <td style="padding: 12px;">${r.data.outlook || '-'}</td>
-                    <td style="padding: 12px;">${r.data.full_forecast || '-'}</td>
-                    <td style="padding: 12px;">${r.data.full_budget || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.outlook)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.full_forecast)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.full_budget)}</td>
                     <td style="padding: 12px;">${r.data.budget_var || '-'}</td>
+                    <td style="padding: 12px;">
+                        <button onclick="editRecord(${r.id})" style="margin-right:8px; padding:2px 6px; cursor:pointer;" title="Edit">✏️</button>
+                        <button onclick="deleteRecord(${r.id})" style="padding:2px 6px; cursor:pointer; color:red;" title="Delete">🗑️</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            return;
+        }
+
+        // Handling for Ore Mined
+        if (STATE.currentMetric === 'Ore Mined') {
+            filteredRecords = records.filter(r => r.metric_name === STATE.currentMetric && r.subtype !== 'fixed_input');
+
+            // Date | Daily Actual | Daily Forecast | Daily Var % | MTD Actual | MTD Forecast | MTD Var % | Outlook (a) | Full Forecast (b) | Full Budget (c) | Budget Var % | Action
+            thead.innerHTML = `
+                <th style="padding: 12px; text-align: left; min-width: 90px;">Date</th>
+                <th style="padding: 12px; text-align: left;">Daily Actual</th>
+                <th style="padding: 12px; text-align: left;">Daily Forecast</th>
+                <th style="padding: 12px; text-align: left;">Daily Var %</th>
+                <th style="padding: 12px; text-align: left;">MTD Actual</th>
+                <th style="padding: 12px; text-align: left;">MTD Forecast</th>
+                <th style="padding: 12px; text-align: left;">MTD Var %</th>
+                <th style="padding: 12px; text-align: left;">Outlook (a)</th>
+                <th style="padding: 12px; text-align: left;">Full Forecast (b)</th>
+                <th style="padding: 12px; text-align: left;">Full Budget (c)</th>
+                <th style="padding: 12px; text-align: left;">Budget Var %</th>
+                <th style="padding: 12px; text-align: left;">Action</th>
+            `;
+
+            if (filteredRecords.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="12" style="padding: 12px; text-align: center;">No records found for ${STATE.currentMetric}</td></tr>`;
+                return;
+            }
+
+            filteredRecords.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.style.borderTop = '1px solid #e5e7eb';
+
+                let dateDisplay = r.date;
+                if (r.date && r.date.includes('-')) {
+                    const [y, m, d] = r.date.split('-');
+                    dateDisplay = `${d}-${m}-${y}`;
+                }
+
+                const val = (v) => (v !== undefined && v !== null && v !== '') ? v : '-';
+
+                tr.innerHTML = `
+                    <td style="padding: 12px;">${dateDisplay}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_actual)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_forecast)}</td>
+                    <td style="padding: 12px;">${val(r.data.var1)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.mtd_actual)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.mtd_forecast)}</td>
+                    <td style="padding: 12px;">${val(r.data.var2)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.outlook)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.full_forecast)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.full_budget)}</td>
+                    <td style="padding: 12px;">${val(r.data.var3)}</td>
                     <td style="padding: 12px;">
                         <button onclick="editRecord(${r.id})" style="margin-right:8px; padding:2px 6px; cursor:pointer;" title="Edit">✏️</button>
                         <button onclick="deleteRecord(${r.id})" style="padding:2px 6px; cursor:pointer; color:red;" title="Delete">🗑️</button>
@@ -8725,15 +8785,15 @@ async function loadRecentRecords(dept) {
 
                 tr.innerHTML = `
                     <td style="padding: 12px;">${dateDisplay}</td>
-                    <td style="padding: 12px;">${r.data.daily_actual || '-'}</td>
-                    <td style="padding: 12px;">${r.data.daily_forecast || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_actual)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_forecast)}</td>
                     <td style="padding: 12px;">${r.data.var1 || '-'}</td>
-                    <td style="padding: 12px;">${r.data.mtd_actual || '-'}</td>
-                    <td style="padding: 12px;">${r.data.mtd_forecast || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.mtd_actual)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.mtd_forecast)}</td>
                     <td style="padding: 12px;">${r.data.var2 || '-'}</td>
-                    <td style="padding: 12px;">${r.data.outlook || '-'}</td>
-                    <td style="padding: 12px;">${r.data.full_forecast || '-'}</td>
-                    <td style="padding: 12px;">${r.data.full_budget || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.outlook)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.full_forecast)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.full_budget)}</td>
                     <td style="padding: 12px;">${r.data.var3 || '-'}</td>
                     <td style="padding: 12px;">
                         <button onclick="editRecord(${r.id})" style="margin-right:8px; padding:2px 6px; cursor:pointer;" title="Edit">✏️</button>
@@ -8849,7 +8909,7 @@ async function loadRecentRecords(dept) {
 
                 tr.innerHTML = `
                     <td style="padding: 12px;">${dateDisplay}</td>
-                    <td style="padding: 12px;">${val(r.data.daily_act_tonnes)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_act_tonnes)}</td>
                     <td style="padding: 12px;">${val(r.data.daily_actual)}</td>
                     <td style="padding: 12px;">${val(r.data.daily_forecast)}</td>
                     <td style="padding: 12px;">${val(r.data.var1)}</td>
@@ -8912,17 +8972,17 @@ async function loadRecentRecords(dept) {
 
                 tr.innerHTML = `
                     <td style="padding: 12px;">${dateDisplay}</td>
-                    <td style="padding: 12px;">${formatNum(r.data.daily_actual)}</td>
-                    <td style="padding: 12px;">${formatNum(r.data.daily_forecast)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_actual)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_forecast)}</td>
                     <td style="padding: 12px;">${val(r.data.var1)}</td>
-                    <td style="padding: 12px;">${formatNum(r.data.mtd_actual)}</td>
-                    <td style="padding: 12px;">${formatNum(r.data.mtd_forecast)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.mtd_actual)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.mtd_forecast)}</td>
                     <td style="padding: 12px;">${val(r.data.var2)}</td>
-                    <td style="padding: 12px;">${formatNum(r.data.outlook)}</td>
-                    <td style="padding: 12px;">${formatNum(r.data.full_forecast)}</td>
-                    <td style="padding: 12px;">${formatNum(r.data.full_budget)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.outlook)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.full_forecast)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.full_budget)}</td>
                     <td style="padding: 12px;">${val(r.data.var3)}</td>
-                    <td style="padding: 12px;">${formatNum(r.data.day2)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.day2)}</td>
                     <td style="padding: 12px;">
                         <button onclick="editRecord(${r.id})" style="margin-right:8px; padding:2px 6px; cursor:pointer;" title="Edit">✏️</button>
                         <button onclick="deleteRecord(${r.id})" style="padding:2px 6px; cursor:pointer; color:red;" title="Delete">🗑️</button>
@@ -9030,17 +9090,17 @@ async function loadRecentRecords(dept) {
 
                 tr.innerHTML = `
                     <td style="padding: 12px;">${dateDisplay}</td>
-                    <td style="padding: 12px;">${r.data.daily_actual || '-'}</td>
-                    <td style="padding: 12px;">${r.data.daily_forecast || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_actual)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.daily_forecast)}</td>
                     <td style="padding: 12px;">${r.data.var1 || '-'}</td>
-                    <td style="padding: 12px;">${r.data.mtd_actual || '-'}</td>
-                    <td style="padding: 12px;">${r.data.mtd_forecast || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.mtd_actual)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.mtd_forecast)}</td>
                     <td style="padding: 12px;">${r.data.var2 || '-'}</td>
-                    <td style="padding: 12px;">${r.data.outlook || '-'}</td>
-                    <td style="padding: 12px;">${r.data.full_forecast || '-'}</td>
-                    <td style="padding: 12px;">${r.data.full_budget || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.outlook)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.full_forecast)}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.full_budget)}</td>
                     <td style="padding: 12px;">${r.data.var3 || '-'}</td>
-                    <td style="padding: 12px;">${r.data.day2 || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.day2)}</td>
                     <td style="padding: 12px;">
                         <button onclick="editRecord(${r.id})" style="margin-right:8px; padding:2px 6px; cursor:pointer;" title="Edit">✏️</button>
                         <button onclick="deleteRecord(${r.id})" style="padding:2px 6px; cursor:pointer; color:red;" title="Delete">🗑️</button>
@@ -9819,32 +9879,34 @@ function renderGMSection(table, areaLabel, deptKey, records, dateStr) {
 
         const d = record ? record.data : {};
 
+        const safeFormat = (v) => DOM.formatNumber(v);
+
         // Daily Actual
-        rowHTML += `<td style="text-align: center;">${val(d.daily_actual)}</td>`;
+        rowHTML += `<td style="text-align: center;">${safeFormat(d.daily_actual)}</td>`;
 
         // Extra Column (Day-2, Qty Avail, Grade-7, or Spacer)
         if (deptKey === "Milling_CIL") {
-            rowHTML += `<td style="text-align: center;">${val(d.day2)}</td>`;
+            rowHTML += `<td style="text-align: center;">${safeFormat(d.day2)}</td>`;
         } else if (deptKey === "Engineering") {
-            rowHTML += `<td style="text-align: center;">${val(d.qty_available)}</td>`;
+            rowHTML += `<td style="text-align: center;">${safeFormat(d.qty_available)}</td>`;
         } else if (deptKey === "Geology" && metric === "Toll") {
             rowHTML += `<td style="text-align: center;">${val(d.grade_7)}</td>`;
         } else {
             rowHTML += `<td></td>`;
         }
 
-        rowHTML += `<td style="text-align: center;">${val(d.daily_forecast)}</td>`;
+        rowHTML += `<td style="text-align: center;">${safeFormat(d.daily_forecast)}</td>`;
         rowHTML += `<td style="text-align: center;">${val(d.var1)}</td>`; // Daily Var
         rowHTML += `<td>${statusIcon(d.var1)}</td>`;
 
-        rowHTML += `<td style="text-align: center;">${val(d.mtd_actual)}</td>`;
-        rowHTML += `<td style="text-align: center;">${val(d.mtd_forecast)}</td>`;
+        rowHTML += `<td style="text-align: center;">${safeFormat(d.mtd_actual)}</td>`;
+        rowHTML += `<td style="text-align: center;">${safeFormat(d.mtd_forecast)}</td>`;
         rowHTML += `<td style="text-align: center;">${val(d.var2)}</td>`; // MTD Var
         rowHTML += `<td>${statusIcon(d.var2)}</td>`;
 
-        rowHTML += `<td style="text-align: center;">${val(d.outlook)}</td>`;
-        rowHTML += `<td style="text-align: center;">${val(d.full_forecast)}</td>`;
-        rowHTML += `<td style="text-align: center;">${val(d.full_budget)}</td>`;
+        rowHTML += `<td style="text-align: center;">${safeFormat(d.outlook)}</td>`;
+        rowHTML += `<td style="text-align: center;">${safeFormat(d.full_forecast)}</td>`;
+        rowHTML += `<td style="text-align: center;">${safeFormat(d.full_budget)}</td>`;
         rowHTML += `<td style="text-align: center;">${val(d.var3)}</td>`; // Budget Var
 
         // Status for Budget Var? Screenshot shows status col after last variance
@@ -9905,4 +9967,133 @@ function drawSparkline(canvasId, records, metric, curDateStr) {
         else ctx.lineTo(x, y);
     });
     ctx.stroke();
+}
+
+async function renderStatusCards(dept, metricName, container) {
+    if (metricName === "Fixed Inputs") return;
+
+    // Create Card Container
+    const cardRow = document.createElement('div');
+    cardRow.style.display = 'flex';
+    cardRow.style.gap = '20px';
+    cardRow.style.marginBottom = '30px';
+    cardRow.style.marginTop = '20px';
+    cardRow.style.justifyContent = 'flex-start'; // or center
+
+    // Determine Target Date Logic
+    // Interpretation: Always show T-1 (Yesterday's) MTD Data.
+    // If T-1 is missing, show latest available in the same month.
+    const today = new Date();
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() - 1); // Yesterday
+
+    const y = targetDate.getFullYear();
+    const m = String(targetDate.getMonth() + 1).padStart(2, '0');
+    // Start of the target month
+    const monthStartStr = `${y}-${m}-01`;
+    // End date for fetch (Target Date)
+    const d = String(targetDate.getDate()).padStart(2, '0');
+    const targetDateStr = `${y}-${m}-${d}`;
+
+    // Helper text to show what date is being displayed (optional, good for debugging)
+    const dateHelper = document.createElement('div');
+    dateHelper.style.fontSize = '11px';
+    dateHelper.style.color = '#9ca3af';
+    dateHelper.style.marginTop = '5px';
+    dateHelper.style.textAlign = 'right';
+    dateHelper.style.width = '100%';
+
+    try {
+        // Fetch KPI records for the whole range (Month Start -> Yesterday)
+        const records = await fetchKPIRecords(dept, monthStartStr, targetDateStr);
+
+        // Filter for specific metric and sort by Date Descending to get latest
+        const relevantRecords = records.filter(r => r.metric_name === metricName && r.subtype !== 'fixed_input');
+
+        // Sort descending by date string comparison
+        relevantRecords.sort((a, b) => {
+            if (a.date > b.date) return -1;
+            if (a.date < b.date) return 1;
+            return 0;
+        });
+
+        const record = relevantRecords[0]; // Latest record
+
+        // Data Extraction
+        let mtdAct = 0;
+        let mtdFcst = 0;
+        let variance = 0;
+        let displayDate = targetDateStr;
+
+        if (record && record.data) {
+            mtdAct = parseFloat(record.data.mtd_actual) || 0;
+            mtdFcst = parseFloat(record.data.mtd_forecast) || 0;
+            // Variance = MTD Actual - MTD Forecast
+            variance = mtdAct - mtdFcst;
+            displayDate = record.date;
+            dateHelper.textContent = `Data as of: ${displayDate}`;
+        } else {
+            dateHelper.textContent = `No data available for ${monthStartStr} to ${targetDateStr}`;
+        }
+
+        // Helper to create single card
+        const createCard = (title, value, colorClass) => {
+            const card = document.createElement('div');
+            card.style.flex = '1';
+            card.style.maxWidth = '200px';
+            card.style.padding = '20px';
+            card.style.borderRadius = '8px';
+            card.style.textAlign = 'center';
+            card.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+
+            if (colorClass === 'yellow') {
+                card.style.backgroundColor = '#fffbeb'; // Light Yellow
+                card.style.border = '1px solid #fcd34d';
+                card.style.color = '#b45309';
+            } else if (colorClass === 'green') {
+                card.style.backgroundColor = '#ecfdf5'; // Light Green
+                card.style.border = '1px solid #6ee7b7';
+                card.style.color = '#047857';
+            } else if (colorClass === 'red') {
+                card.style.backgroundColor = '#fef2f2'; // Light Red
+                card.style.border = '1px solid #fca5a5';
+                card.style.color = '#b91c1c';
+            }
+
+            const h4 = document.createElement('h4');
+            h4.textContent = title;
+            h4.style.margin = '0 0 10px 0';
+            h4.style.fontSize = '12px';
+            h4.style.textTransform = 'uppercase';
+            h4.style.letterSpacing = '0.5px';
+
+            const valDiv = document.createElement('div');
+            // Format number
+            valDiv.textContent = value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+            valDiv.style.fontSize = '24px';
+            valDiv.style.fontWeight = 'bold';
+
+            card.appendChild(h4);
+            card.appendChild(valDiv);
+            return card;
+        };
+
+        const card1 = createCard("MTD ACTUAL", mtdAct, 'yellow');
+        const card2 = createCard("MTD FORECAST", mtdFcst, 'green');
+        const card3 = createCard("VARIANCE", variance, 'red');
+
+        cardRow.appendChild(card1);
+        cardRow.appendChild(card2);
+        cardRow.appendChild(card3);
+
+        // Insert after title (firstChild is h3 title)
+        if (container.firstChild) {
+            container.insertBefore(cardRow, container.childNodes[1]);
+        } else {
+            container.appendChild(cardRow);
+        }
+
+    } catch (e) {
+        console.error("Error fetching status card data", e);
+    }
 }
