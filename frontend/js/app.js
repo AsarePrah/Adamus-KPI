@@ -572,19 +572,39 @@ function renderLoginScreen() {
     forgotLink.style.cursor = 'pointer';
     forgotLink.style.fontSize = '13px';
     forgotLink.onclick = () => {
-        const u = username.input.value;
-        if (!u) {
-            alert('Please enter your username to reset password.');
+        const targetUsername = username.input.value;
+        if (!targetUsername) {
+            alert('Please enter the username you wish to reset the password for, then click "Forgot Password?".');
             return;
         }
-        const users = JSON.parse(localStorage.getItem('kpi_users') || '[]');
-        const user = users.find(x => x.username === u);
-        if (user) {
-            // Mock reset
-            alert(`Password Reset: Your password is "${user.password}"`);
-        } else {
-            alert('User not found.');
-        }
+
+        verifyAdminAccess(() => {
+            const users = JSON.parse(localStorage.getItem('kpi_users') || '[]');
+            const index = users.findIndex(x => x.username === targetUsername);
+
+            if (index !== -1) {
+                // Admin verified, proceed to reset
+                // Since we are in the admin context (verifyAdminAccess clears screen), 
+                // we might want to show a simple prompt or a small form.
+                // For simplicity, let's just use prompt, but note that verifyAdminAccess clears the screen.
+                // We should probably re-render login or home after.
+
+                setTimeout(() => { // Timeout to allow UI effective update if needed
+                    const newPass = prompt(`Admin verification successful.\nEner new password for user '${targetUsername}':`);
+                    if (newPass) {
+                        users[index].password = newPass;
+                        localStorage.setItem('kpi_users', JSON.stringify(users));
+                        alert(`Password for user '${targetUsername}' has been reset successfully.`);
+                        renderLoginScreen();
+                    } else {
+                        renderLoginScreen();
+                    }
+                }, 100);
+            } else {
+                alert('User not found.');
+                renderLoginScreen();
+            }
+        });
     };
 
     const backLink = document.createElement('div');
