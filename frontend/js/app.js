@@ -8,7 +8,7 @@ const STATE = {
     currentMetric: "Gold Contained"
 };
 
-const DEPARTMENTS = ["Geology", "Mining", "Crushing", "Milling_CIL", "OHS", "Engineering"];
+const DEPARTMENTS = ["Geology", "Mining", "Crushing", "Milling_CIL", "OHS", "Engineering", "GM_Report"];
 
 const DEPT_METRICS = {
     "Milling_CIL": [
@@ -56,7 +56,8 @@ const DEPT_METRICS = {
         "Dozers",
         "Crusher",
         "Mill"
-    ]
+    ],
+    "GM_Report": []
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -384,13 +385,21 @@ function renderSidebar() {
 // Make loadDepartmentView global so HTML onclick can find it
 window.loadDepartmentView = async function (dept) {
     STATE.currentDept = dept;
+    const content = document.getElementById('content');
+
+    // -- GM Report View --
+    if (dept === "GM_Report") {
+        content.innerHTML = '';
+        renderGMReport(content);
+        return;
+    }
+
     const availableMetrics = DEPT_METRICS[dept] || ["General"];
     // Default to the first metric if not set or if switching depts
     if (!availableMetrics.includes(STATE.currentMetric)) {
         STATE.currentMetric = availableMetrics[0];
     }
 
-    const content = document.getElementById('content');
     content.innerHTML = `
         <h2 style="margin-bottom: 20px;">${dept.replace('_', ' ')} Dashboard</h2>
         
@@ -7971,6 +7980,7 @@ async function loadRecentRecords(dept) {
                 tr.style.borderTop = '1px solid #e5e7eb';
 
                 let dateDisplay = r.date;
+
                 if (r.date && r.date.includes('-')) {
                     const [y, m, d] = r.date.split('-');
                     dateDisplay = `${d}-${m}-${y}`;
@@ -7991,6 +8001,7 @@ async function loadRecentRecords(dept) {
                     <td style="padding: 12px;">${r.data.var3 || '-'}</td>
                     <td style="padding: 12px;">${r.data.grade || '-'}</td>
                     <td style="padding: 12px;">${r.data.grade_7 || '-'}</td>
+
                     <td style="padding: 12px;">
                         <button onclick="editRecord(${r.id})" style="margin-right:8px; padding:2px 6px; cursor:pointer;" title="Edit">✏️</button>
                         <button onclick="deleteRecord(${r.id})" style="padding:2px 6px; cursor:pointer; color:red;" title="Delete">🗑️</button>
@@ -8001,62 +8012,6 @@ async function loadRecentRecords(dept) {
             return;
         }
 
-        // Handling for Ore Mined
-        if (STATE.currentMetric === 'Ore Mined') {
-            filteredRecords = records.filter(r => r.metric_name === STATE.currentMetric && r.subtype !== 'fixed_input');
-
-            // Date | D.Act | D.Fcst | Var% | MTD.Act | MTD.Fcst | Var% | Outlook | F.Fcst | F.Budg | Var% | Action
-            thead.innerHTML = `
-                <th style="padding: 12px; text-align: left; min-width: 90px;">Date</th>
-                <th style="padding: 12px; text-align: left;">D.Act</th>
-                <th style="padding: 12px; text-align: left;">D.Fcst</th>
-                <th style="padding: 12px; text-align: left;">Var%</th>
-                <th style="padding: 12px; text-align: left;">MTD.Act</th>
-                <th style="padding: 12px; text-align: left;">MTD.Fcst</th>
-                <th style="padding: 12px; text-align: left;">Var%</th>
-                <th style="padding: 12px; text-align: left;">Outlook</th>
-                <th style="padding: 12px; text-align: left;">F.Fcst</th>
-                <th style="padding: 12px; text-align: left;">F.Budg</th>
-                <th style="padding: 12px; text-align: left;">Var%</th>
-                <th style="padding: 12px; text-align: left;">Action</th>
-            `;
-
-            if (filteredRecords.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="12" style="padding: 12px; text-align: center;">No records found for ${STATE.currentMetric}</td></tr>`;
-                return;
-            }
-
-            filteredRecords.forEach(r => {
-                const tr = document.createElement('tr');
-                tr.style.borderTop = '1px solid #e5e7eb';
-
-                let dateDisplay = r.date;
-                if (r.date && r.date.includes('-')) {
-                    const [y, m, d] = r.date.split('-');
-                    dateDisplay = `${d}-${m}-${y}`;
-                }
-
-                tr.innerHTML = `
-                    <td style="padding: 12px;">${dateDisplay}</td>
-                    <td style="padding: 12px;">${r.data.daily_actual || '-'}</td>
-                    <td style="padding: 12px;">${r.data.daily_forecast || '-'}</td>
-                    <td style="padding: 12px;">${r.data.var1 || '-'}</td>
-                    <td style="padding: 12px;">${r.data.mtd_actual || '-'}</td>
-                    <td style="padding: 12px;">${r.data.mtd_forecast || '-'}</td>
-                    <td style="padding: 12px;">${r.data.var2 || '-'}</td>
-                    <td style="padding: 12px;">${r.data.outlook || '-'}</td>
-                    <td style="padding: 12px;">${r.data.full_forecast || '-'}</td>
-                    <td style="padding: 12px;">${r.data.full_budget || '-'}</td>
-                    <td style="padding: 12px;">${r.data.var3 || '-'}</td>
-                    <td style="padding: 12px;">
-                        <button onclick="editRecord(${r.id})" style="margin-right:8px; padding:2px 6px; cursor:pointer;" title="Edit">✏️</button>
-                        <button onclick="deleteRecord(${r.id})" style="padding:2px 6px; cursor:pointer; color:red;" title="Delete">🗑️</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-            return;
-        }
 
         // Handling for Ore Crushed
         if (STATE.currentMetric === 'Ore Crushed') {
@@ -9153,4 +9108,321 @@ async function loadRecentRecords(dept) {
     } catch (e) {
         console.error("Error loading records", e);
     }
+}
+
+// -- GM Report Implementation --
+
+function renderGMReport(card) {
+    // 1. Controls Container
+    const controls = document.createElement('div');
+    controls.style.display = 'flex';
+    controls.style.justifyContent = 'space-between';
+    controls.style.alignItems = 'center';
+    controls.style.marginBottom = '20px';
+    controls.style.backgroundColor = '#000'; // Dark background for top bar
+    controls.style.color = '#fff';
+    controls.style.padding = '10px';
+    controls.style.position = 'relative'; // Allow absolute positioning of title
+
+    // Date Picker
+    const dateDiv = document.createElement('div');
+    dateDiv.style.display = 'flex';
+    dateDiv.style.flexDirection = 'column';
+    dateDiv.style.zIndex = '10'; // Ensure it stays on top if overlap
+
+    const dateLabel = document.createElement('span');
+    dateLabel.textContent = "SELECTED DATE:";
+    dateLabel.style.fontSize = '12px';
+    dateLabel.style.fontWeight = 'bold';
+    dateLabel.style.color = '#fbbf24'; // Goldish color
+
+    const dateInput = document.createElement('input');
+    dateInput.type = 'date';
+    dateInput.style.backgroundColor = '#fff'; // White bg for visibility
+    dateInput.style.color = '#000';
+    dateInput.style.border = '1px solid #ccc';
+    dateInput.style.borderRadius = '4px';
+    dateInput.style.padding = '5px';
+    dateInput.style.fontSize = '14px';
+    dateInput.style.fontWeight = 'bold';
+    dateInput.style.outline = 'none';
+    dateInput.style.cursor = 'pointer';
+
+    // Default to today
+    dateInput.valueAsDate = new Date();
+
+    dateDiv.appendChild(dateLabel);
+    dateDiv.appendChild(dateInput);
+    controls.appendChild(dateDiv);
+
+    // Title
+    const title = document.createElement('h2');
+    title.textContent = "Adamus Resources Limited KPI - " + new Date().getFullYear();
+    title.style.margin = '0';
+    title.style.fontSize = '24px';
+    title.style.position = 'absolute';
+    title.style.left = '50%';
+    title.style.transform = 'translateX(-50%)';
+    controls.appendChild(title);
+
+    card.appendChild(controls);
+
+    // 2. Report Container (Table)
+    const reportTable = document.createElement('table');
+    reportTable.style.width = '100%';
+    reportTable.style.borderCollapse = 'collapse';
+    reportTable.style.fontSize = '12px';
+
+    card.appendChild(reportTable);
+
+    // Load Data Function
+    const loadReport = async () => {
+        const selectedDate = dateInput.value;
+        if (!selectedDate) return;
+
+        // Fetch all data in parallel
+        // We need data from: OHS, Milling_CIL, Crushing, Mining, Geology, Engineering
+        const deptsToFetch = ["OHS", "Milling_CIL", "Crushing", "Mining", "Geology", "Engineering"];
+
+        try {
+            // Show loading
+            reportTable.innerHTML = '<tr><td colspan="15" style="text-align:center; padding:20px;">Loading Report...</td></tr>';
+
+            const promises = deptsToFetch.map(d => fetchKPIRecords(d));
+            const results = await Promise.all(promises);
+
+            // Map results to dept
+            const dataStore = {};
+            deptsToFetch.forEach((d, i) => {
+                dataStore[d] = results[i];
+            });
+
+            // Clear table
+            reportTable.innerHTML = '';
+
+            // Render Sections
+            renderGMSection(reportTable, "OHS", "OHS", dataStore["OHS"], selectedDate);
+            renderGMSection(reportTable, "Milling/CIL", "Milling_CIL", dataStore["Milling_CIL"], selectedDate);
+            renderGMSection(reportTable, "Crushing", "Crushing", dataStore["Crushing"], selectedDate);
+            renderGMSection(reportTable, "Mining", "Mining", dataStore["Mining"], selectedDate);
+            renderGMSection(reportTable, "Geology", "Geology", dataStore["Geology"], selectedDate);
+            renderGMSection(reportTable, "Engineering", "Engineering", dataStore["Engineering"], selectedDate);
+
+        } catch (e) {
+            console.error(e);
+            reportTable.innerHTML = `<tr><td colspan="15" style="color:red; text-align:center;">Error loading report: ${e.message}</td></tr>`;
+        }
+    };
+
+    // Initial Load
+    // loadReport(); // Can uncomment to load immediately, or wait for user interaction. 
+    // Usually better to load immediately.
+    loadReport();
+
+    dateInput.addEventListener('change', loadReport);
+}
+
+// Helper to render a section (Department)
+function renderGMSection(table, areaLabel, deptKey, records, dateStr) {
+    // 1. Header Row
+    // The screenshot has a specific header row for EACH section, often with varying columns?
+    // Actually, looking closely, the columns are MOSTLY aligned, but "Day-2" and "Qty Available" shift things?
+    // Let's create a header row for the section.
+
+    // Header Color: Brown/Orange from screenshot #8B4513
+    const headerBg = '#8B4513';
+    const headerColor = '#fff';
+
+    let headerRowHTML = `
+        <tr style="background-color: ${headerBg}; color: ${headerColor}; font-weight: bold; text-align: center;">
+            <th style="padding: 5px; text-align: left; width: 80px;">Area</th>
+            <th style="padding: 5px; text-align: left;">KPI</th>
+            <th style="padding: 5px;">Daily Actual</th>
+    `;
+
+    // Special Columns Handling
+    if (deptKey === "Milling_CIL") {
+        headerRowHTML += `<th style="padding: 5px;">Day-2</th>`;
+    } else if (deptKey === "Engineering") {
+        headerRowHTML += `<th style="padding: 5px;">Qty Available</th>`;
+    } else if (deptKey === "Geology" || deptKey === "Mining") {
+        // Mining has 'Grade - Ore Mined' but as a separate KPI row, not column usually?
+        // Screenshot for Mining shows "Daily Actual", "Grade (Day-7)" - No, wait, looking at row 'Ore Mined', columns are:
+        // Daily Actual | Grade (Day-7) ? No, screenshot is:
+        // Ore Mined (t) | 6,732 | [Blank] | ...
+        // Grade - Ore Mined (g/t) | 0.62 | [Blank] ...
+
+        // Actually, let's keep it simple. If the screenshot implies a rigid grid, we should try to fit it.
+        // Most sections have "Daily Actual" then "Daily Forecast".
+        // Milling inserts "Day-2". Engineering inserts "Qty Available".
+        // To align them, we might need a blank column for others?
+        // Or just let them be different widths? The screenshot looks like ONE table with aligned columns globally except those specific ones.
+        // Let's assume a "Extra Column" slot.
+        headerRowHTML += `<th style="padding: 5px; width: 60px;"></th>`; // Spacer/Extra
+    } else {
+        headerRowHTML += `<th style="padding: 5px; width: 60px;"></th>`; // Spacer
+    }
+
+    headerRowHTML += `
+            <th style="padding: 5px;">Daily Forecast</th>
+            <th style="padding: 5px;">Variance</th>
+            <th style="padding: 5px; width: 30px;">Status</th>
+            <th style="padding: 5px;">MTD Actual</th>
+            <th style="padding: 5px;">MTD Forecast</th>
+            <th style="padding: 5px;">Variance</th>
+            <th style="padding: 5px; width: 30px;">Status</th>
+            <th style="padding: 5px;">Outlook (a)</th>
+            <th style="padding: 5px;">Forecast (b)</th>
+            <th style="padding: 5px;">Budget (c)</th>
+            <th style="padding: 5px;">Variance</th>
+            <th style="padding: 5px; width: 30px;">Status</th>
+            <th style="padding: 5px;">Last 7 Days Trend</th>
+        </tr>
+    `;
+
+    // Add Header
+    // Note: If we want one big table, we shouldn't add headers every time if they are identical.
+    // But they differ (Area label, extra column). So section headers are good.
+    // table.insertAdjacentHTML('beforeend', headerRowHTML); 
+    // Actually, create element to be safe
+    const thead = document.createElement('tbody'); // Use tbody grouping for sections
+    thead.innerHTML = headerRowHTML;
+    table.appendChild(thead);
+
+    // 2. Data Rows
+    // Get metrics for this dept
+    const metrics = DEPT_METRICS[deptKey].filter(m => m !== 'Fixed Inputs');
+
+    metrics.forEach((metric, index) => {
+        // Find record for this date
+        const record = records.find(r => r.metric_name === metric && r.date === dateStr && r.subtype !== 'fixed_input');
+
+        let rowHTML = `<tr style="background-color: #ddd; border-bottom: 1px solid #999;">`;
+
+        // Area Cell (Only for first row of section)
+        if (index === 0) {
+            rowHTML += `<td rowspan="${metrics.length}" style="background-color: #a0522d; color: white; font-weight: bold; vertical-align: middle; text-align: center; border-bottom: 1px solid #777;">${areaLabel}</td>`;
+        }
+
+        rowHTML += `<td style="padding: 5px; font-weight: 500;">${metric}</td>`;
+
+        // Data Extraction Helper
+        const val = (v) => (v != null && v !== '') ? v : '-';
+        const num = (v) => (v != null && v !== '' && !isNaN(v)) ? Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }) : val(v);
+        // Variance color/icon helper
+        const statusIcon = (varianceVal) => {
+            // Simple logic: if variance string contains negative (e.g. -10%), RED Frown based on metric polarity?
+            // Assuming typical: Positive is Green (Good), Negative is Red (Bad).
+            // Exception: Safety/Cost.
+            // For now, heuristic: Green if >= 0 or safely string check.
+            // If variance is string "-10%", key is the minus.
+            // BUT for Safety, 0 is good.
+            if (!varianceVal) return '';
+
+            let isNegative = varianceVal.toString().includes('-');
+            // Invert for OHS?
+            if (deptKey === 'OHS' && (metric.includes('Incident') || metric.includes('Damage'))) {
+                isNegative = !isNegative; // If it's negative (reduction), it's good ??
+                // Wait, Variance = (Actual - Target) / Target.
+                // If Actual (1) > Target (0), Variance is +Infinity/Bad.
+                // If Actual (0) < Target (1), Variance is -100%/Good.
+                // So for Safety: Negative Variance is GOOD.
+            }
+
+            const color = isNegative ? '#ffcccb' : '#90ee90'; // Light red / Light green
+            const icon = isNegative ? '☹️' : '🙂';
+            // For Safety: Negative is Good (Green), Positive is Bad (Red)
+            if (deptKey === 'OHS') {
+                return `<div style="background-color: ${isNegative ? '#90ee90' : '#ffcccb'}; text-align: center; border-radius: 4px;">${isNegative ? '🙂' : '☹️'}</div>`;
+            }
+
+            return `<div style="background-color: ${isNegative ? '#ffcccb' : '#90ee90'}; text-align: center; border-radius: 4px;">${icon}</div>`;
+        };
+
+        const d = record ? record.data : {};
+
+        // Daily Actual
+        rowHTML += `<td style="text-align: center;">${val(d.daily_actual)}</td>`;
+
+        // Extra Column (Day-2, Qty Avail, or Spacer)
+        if (deptKey === "Milling_CIL") {
+            rowHTML += `<td style="text-align: center;">${val(d.day2)}</td>`;
+        } else if (deptKey === "Engineering") {
+            rowHTML += `<td style="text-align: center;">${val(d.qty_available)}</td>`;
+        } else {
+            rowHTML += `<td></td>`;
+        }
+
+        rowHTML += `<td style="text-align: center;">${val(d.daily_forecast)}</td>`;
+        rowHTML += `<td style="text-align: center;">${val(d.var1)}</td>`; // Daily Var
+        rowHTML += `<td>${statusIcon(d.var1)}</td>`;
+
+        rowHTML += `<td style="text-align: center;">${val(d.mtd_actual)}</td>`;
+        rowHTML += `<td style="text-align: center;">${val(d.mtd_forecast)}</td>`;
+        rowHTML += `<td style="text-align: center;">${val(d.var2)}</td>`; // MTD Var
+        rowHTML += `<td>${statusIcon(d.var2)}</td>`;
+
+        rowHTML += `<td style="text-align: center;">${val(d.outlook)}</td>`;
+        rowHTML += `<td style="text-align: center;">${val(d.full_forecast)}</td>`;
+        rowHTML += `<td style="text-align: center;">${val(d.full_budget)}</td>`;
+        rowHTML += `<td style="text-align: center;">${val(d.var3)}</td>`; // Budget Var
+
+        // Status for Budget Var? Screenshot shows status col after last variance
+        rowHTML += `<td>${statusIcon(d.var3)}</td>`;
+
+        // Sparkline Placeholder
+        rowHTML += `<td><canvas id="spark-${deptKey}-${index}" width="100" height="30"></canvas></td>`;
+
+        rowHTML += `</tr>`;
+        thead.insertAdjacentHTML('beforeend', rowHTML);
+
+        // Render Sparkline (Async/Later)
+        // We need past 7 days data.
+        setTimeout(() => {
+            drawSparkline(`spark-${deptKey}-${index}`, records, metric, dateStr);
+        }, 0);
+    });
+}
+
+function drawSparkline(canvasId, records, metric, curDateStr) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // Get last 7 days including current
+    const dates = [];
+    const current = new Date(curDateStr);
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(current);
+        d.setDate(d.getDate() - i);
+        dates.push(d.toISOString().split('T')[0]);
+    }
+
+    const values = dates.map(date => {
+        const rec = records.find(r => r.date === date && r.metric_name === metric);
+        if (!rec || !rec.data) return 0;
+        let val = rec.data.daily_actual;
+        if (typeof val === 'string') val = parseFloat(val.replace('%', '').replace(/,/g, ''));
+        return isNaN(val) ? 0 : val;
+    });
+
+    // Draw
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.beginPath();
+    ctx.strokeStyle = '#2563eb'; // Blue
+    ctx.lineWidth = 2;
+
+    const max = Math.max(...values, 1);
+    const min = Math.min(...values, 0);
+    const range = max - min;
+
+    values.forEach((v, i) => {
+        const x = (i / (values.length - 1)) * w;
+        const y = h - ((v - min) / range) * (h - 4) - 2; // Padding
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
 }
