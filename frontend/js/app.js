@@ -6952,6 +6952,14 @@ function renderEngineeringDozersForm(dept, metricName, card) {
                         fullFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
                     }
                 }
+
+                // Populate Full Budget (c) if it exists
+                if (target.data.full_budget != null) {
+                    if (typeof fullBudg !== 'undefined') {
+                        fullBudg.input.value = target.data.full_budget;
+                        fullBudg.input.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                }
             }
         } catch (e) {
             console.error(e);
@@ -6979,27 +6987,149 @@ function renderEngineeringDozersForm(dept, metricName, card) {
         }
     });
 
+
+    // Auto-Calculate MTD Actual (Average)
+    const updateMTDActual = async () => {
+        const dateVal = date.input.value;
+        const currentDailyValStr = dAct.input.value;
+
+        if (!dateVal) return;
+
+        // Parse current daily actual (remove % if present)
+        let currentDailyVal = 0;
+        if (currentDailyValStr) {
+            currentDailyVal = parseFloat(currentDailyValStr.replace('%', ''));
+        }
+        if (isNaN(currentDailyVal)) currentDailyVal = 0;
+
+        const [y, m, d] = dateVal.split(' ').length > 1 ? new Date(dateVal).toISOString().split('T')[0].split('-').map(Number) : dateVal.split('-').map(Number);
+
+        // Logic for 1st of month: Mirror Daily
+        if (d === 1) {
+            if (currentDailyValStr) {
+                mAct.input.value = Math.round(currentDailyVal) + '%';
+                mAct.input.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            return;
+        }
+
+        // Logic for subsequent days: Average of (Previous Records + Current)
+        try {
+            const records = await fetchKPIRecords(dept);
+            const selectedMonth = m - 1; // JS Month 0-11
+            const selectedYear = y;
+
+            // Filter for previous days in same month
+            const matchedRecords = records.filter(r => {
+                if (r.metric_name !== metricName) return false;
+                if (!r.data || r.data.daily_actual == null) return false;
+                if (r.subtype === 'fixed_input') return false; // Exclude fixed inputs
+
+                const [rY, rM, rD] = r.date.split('-').map(Number);
+
+                // Check month/year match
+                if ((rM - 1) !== selectedMonth || rY !== selectedYear) return false;
+
+                // Check if strictly before current date
+                if (rD >= d) return false;
+
+                return true;
+            });
+
+            // Sum previous
+            let sum = 0;
+            let count = 0;
+
+            matchedRecords.forEach(r => {
+                let val = r.data.daily_actual;
+                // Handle various formats
+                if (typeof val === 'string') {
+                    val = parseFloat(val.replace('%', ''));
+                }
+
+                if (!isNaN(val)) {
+                    sum += val;
+                    count++;
+                }
+            });
+
+            // Add Current Input
+            sum += currentDailyVal;
+            count += 1;
+
+            const average = count > 0 ? (sum / count) : 0;
+            mAct.input.value = Math.round(average) + '%';
+            mAct.input.dispatchEvent(new Event('input', { bubbles: true }));
+
+        } catch (e) {
+            console.error("Error calculating MTD Actual", e);
+        }
+    };
+
+    // Attach listeners
+    dAct.input.addEventListener('input', updateMTDActual);
+    date.input.addEventListener('change', updateMTDActual);
+
     // Row 4
     const fullFcst = DOM.createInputGroup("Full Forecast (b)", `input-${dept}-full-fcst`, "text"); // Changed to text
     const fullBudg = DOM.createInputGroup("Full Budget (c)", `input-${dept}-full-budg`, "number");
-    const budgVar = DOM.createInputGroup("Var %", `input-${dept}-budg-var`, "text");
-    budgVar.input.readOnly = true;
-    // Note: No Outlook (a) in this form, so comparing Full Forecast vs Budget usually
-    attachVarianceListener(fullFcst.input, fullBudg.input, budgVar.input);
-
 
     // Add to Grid
     add(kpi); add(date); grid.appendChild(document.createElement('div')); grid.appendChild(document.createElement('div')); // Spacers
     add(dQty); add(dAct); add(dFcst); add(dVar);
     add(mAct); add(mFcst); add(mVar); grid.appendChild(document.createElement('div')); // Spacer
-    add(fullFcst); add(fullBudg); add(budgVar); grid.appendChild(document.createElement('div')); // Spacer
+    add(fullFcst); add(fullBudg); grid.appendChild(document.createElement('div')); grid.appendChild(document.createElement('div')); // Spacers
 
     card.appendChild(grid);
 
     // Save Button
     const btnContainer = document.createElement('div');
-    const saveBtn = DOM.createButton("Save Record", () => {
-        alert("Saving functionality for Dozers form to be implemented.");
+    const saveBtn = DOM.createButton("Save Record", async () => {
+        const dateVal = date.input.value;
+        if (!dateVal) {
+            alert("Please select a date.");
+            return;
+        }
+
+        const record = {
+            metric_name: metricName,
+            date: dateVal,
+            department: dept,
+            data: {
+                qty_available: dQty.input.value,
+                daily_actual: dAct.input.value,
+                daily_forecast: dFcst.input.value,
+                var1: dVar.input.value,
+                mtd_actual: mAct.input.value,
+                mtd_forecast: mFcst.input.value,
+                var2: mVar.input.value,
+                full_forecast: fullFcst.input.value,
+                full_budget: fullBudg.input.value
+                // var3: removed
+            }
+        };
+
+        try {
+            await saveKPIRecord(dept, record);
+            DOM.showToast("Record saved successfully!");
+            loadRecentRecords(dept);
+
+            // Clear inputs
+            dQty.input.value = '';
+            dAct.input.value = '';
+            dFcst.input.value = '';
+            dVar.input.value = '';
+            mAct.input.value = '';
+            mFcst.input.value = '';
+            mVar.input.value = '';
+            fullFcst.input.value = '';
+            fullBudg.input.value = '';
+            // date.input.value = ''; // Keep date selected or clear?
+
+        } catch (error) {
+            console.error(error);
+            DOM.showToast("Failed to save record.", "error");
+        }
     });
     btnContainer.appendChild(saveBtn);
     card.appendChild(btnContainer);
@@ -7021,43 +7151,232 @@ function renderEngineeringCrusherForm(dept, metricName, card) {
     kpi.input.readOnly = true;
 
     const date = DOM.createInputGroup("Date", `input-${dept}-date`, "date");
-    date.input.valueAsDate = new Date();
+    date.input.value = '';
 
     // Row 2
-    const dAct = DOM.createInputGroup("Daily Actual(%)", `input-${dept}-daily-act-pct`, "number");
-    const dFcst = DOM.createInputGroup("Daily Forecast(%)", `input-${dept}-daily-fcst-pct`, "number");
+    const dAct = DOM.createInputGroup("Daily Actual(%)", `input-${dept}-daily-act-pct`, "text"); // Changed to text
+    const dFcst = DOM.createInputGroup("Daily Forecast(%)", `input-${dept}-daily-fcst-pct`, "text"); // Changed to text
     const dVar = DOM.createInputGroup("Var %", `input-${dept}-daily-var`, "text");
     dVar.input.readOnly = true;
     attachVarianceListener(dAct.input, dFcst.input, dVar.input);
 
+    // Auto-Fetch Fixed Inputs on Date Change for Crusher
+    date.input.addEventListener('change', async () => {
+        const dateVal = date.input.value;
+        if (!dateVal) return;
+
+        try {
+            const records = await fetchKPIRecords(dept);
+            const fixedInputs = records.filter(r => r.subtype === 'fixed_input');
+
+            const [y, m, d] = dateVal.split('-');
+            const searchMonth = `${y}-${m}`;
+
+            const target = fixedInputs.find(r => {
+                if (r.metric_name.trim().toLowerCase() !== metricName.trim().toLowerCase()) return false;
+                return r.date && r.date.startsWith(searchMonth);
+            });
+
+            if (target && target.data) {
+                if (target.data.full_forecast != null) {
+                    let val = target.data.full_forecast;
+                    if (typeof val === 'number') {
+                        val = val + '%';
+                    } else if (typeof val === 'string' && !val.includes('%')) {
+                        val = val + '%';
+                    }
+
+                    dFcst.input.value = val;
+                    dFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
+
+                    // Also populate Full Forecast (b) if it exists
+                    if (typeof fullFcst !== 'undefined') {
+                        fullFcst.input.value = val;
+                        fullFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                }
+
+                // Populate Full Budget (c) if it exists
+                if (target.data.full_budget != null) {
+                    if (typeof fullBudg !== 'undefined') {
+                        let bVal = target.data.full_budget;
+                        if (typeof bVal === 'number') {
+                            bVal = bVal + '%';
+                        } else if (typeof bVal === 'string' && !bVal.includes('%')) {
+                            bVal = bVal + '%';
+                        }
+                        fullBudg.input.value = bVal;
+                        fullBudg.input.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                }
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    });
+
     // Row 3
-    const mAct = DOM.createInputGroup("MTD Actual", `input-${dept}-mtd-act`, "number");
-    const mFcst = DOM.createInputGroup("MTD Forecast", `input-${dept}-mtd-fcst`, "number");
+    const mAct = DOM.createInputGroup("MTD Actual", `input-${dept}-mtd-act`, "text"); // Changed to text
+    const mFcst = DOM.createInputGroup("MTD Forecast", `input-${dept}-mtd-fcst`, "text"); // Changed to text
     const mVar = DOM.createInputGroup("Var %", `input-${dept}-mtd-var`, "text");
     mVar.input.readOnly = true;
     attachVarianceListener(mAct.input, mFcst.input, mVar.input);
 
-    // Row 4
-    const fullFcst = DOM.createInputGroup("Full Forecast (b)", `input-${dept}-full-fcst`, "number");
-    const fullBudg = DOM.createInputGroup("Full Budget (c)", `input-${dept}-full-budg`, "number");
-    const budgVar = DOM.createInputGroup("Var %", `input-${dept}-budg-var`, "text");
-    budgVar.input.readOnly = true;
-    // Note: No Outlook (a) in this form, so comparing Full Forecast vs Budget usually
-    attachVarianceListener(fullFcst.input, fullBudg.input, budgVar.input);
+    // Auto-Populate MTD Forecast from Daily Forecast for Crusher
+    dFcst.input.addEventListener('input', () => {
+        let val = dFcst.input.value;
+        if (val) {
+            if (!val.includes('%')) {
+                val = val + '%';
+            }
+            mFcst.input.value = val;
+            mFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+            mFcst.input.value = '';
+        }
+    });
 
+
+    // Auto-Calculate MTD Actual (Average)
+    const updateMTDActual = async () => {
+        const dateVal = date.input.value;
+        const currentDailyValStr = dAct.input.value;
+
+        if (!dateVal) return;
+
+        // Parse current daily actual (remove % if present)
+        let currentDailyVal = 0;
+        if (currentDailyValStr) {
+            currentDailyVal = parseFloat(currentDailyValStr.replace('%', ''));
+        }
+        if (isNaN(currentDailyVal)) currentDailyVal = 0;
+
+        const [y, m, d] = dateVal.split(' ').length > 1 ? new Date(dateVal).toISOString().split('T')[0].split('-').map(Number) : dateVal.split('-').map(Number);
+
+        // Logic for 1st of month: Mirror Daily
+        if (d === 1) {
+            if (currentDailyValStr) {
+                mAct.input.value = Math.round(currentDailyVal) + '%';
+                mAct.input.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            return;
+        }
+
+        // Logic for subsequent days: Average of (Previous Records + Current)
+        try {
+            const records = await fetchKPIRecords(dept);
+            const selectedMonth = m - 1; // JS Month 0-11
+            const selectedYear = y;
+
+            // Filter for previous days in same month
+            const matchedRecords = records.filter(r => {
+                if (r.metric_name !== metricName) return false;
+                if (!r.data || r.data.daily_actual == null) return false;
+                if (r.subtype === 'fixed_input') return false; // Exclude fixed inputs
+
+                const [rY, rM, rD] = r.date.split('-').map(Number);
+
+                // Check month/year match
+                if ((rM - 1) !== selectedMonth || rY !== selectedYear) return false;
+
+                // Check if strictly before current date
+                if (rD >= d) return false;
+
+                return true;
+            });
+
+            // Sum previous
+            let sum = 0;
+            let count = 0;
+
+            matchedRecords.forEach(r => {
+                let val = r.data.daily_actual;
+                // Handle various formats
+                if (typeof val === 'string') {
+                    val = parseFloat(val.replace('%', ''));
+                }
+
+                if (!isNaN(val)) {
+                    sum += val;
+                    count++;
+                }
+            });
+
+            // Add Current Input
+            sum += currentDailyVal;
+            count += 1;
+
+            const average = count > 0 ? (sum / count) : 0;
+            mAct.input.value = Math.round(average) + '%';
+            mAct.input.dispatchEvent(new Event('input', { bubbles: true }));
+
+        } catch (e) {
+            console.error("Error calculating MTD Actual", e);
+        }
+    };
+
+    // Attach listeners
+    dAct.input.addEventListener('input', updateMTDActual);
+    date.input.addEventListener('change', updateMTDActual);
+
+    // Row 4
+    const fullFcst = DOM.createInputGroup("Full Forecast (b)", `input-${dept}-full-fcst`, "text"); // Changed to text
+    const fullBudg = DOM.createInputGroup("Full Budget (c)", `input-${dept}-full-budg`, "text"); // Changed to text
 
     // Add to Grid
     add(kpi); add(date); grid.appendChild(document.createElement('div')); // Spacer
     add(dAct); add(dFcst); add(dVar);
     add(mAct); add(mFcst); add(mVar);
-    add(fullFcst); add(fullBudg); add(budgVar);
+    add(fullFcst); add(fullBudg); grid.appendChild(document.createElement('div')); // Spacer
 
     card.appendChild(grid);
 
     // Save Button
     const btnContainer = document.createElement('div');
-    const saveBtn = DOM.createButton("Save Record", () => {
-        alert("Saving functionality for Crusher form to be implemented.");
+    const saveBtn = DOM.createButton("Save Record", async () => {
+        const dateVal = date.input.value;
+        if (!dateVal) {
+            alert("Please select a date.");
+            return;
+        }
+
+        const record = {
+            metric_name: metricName,
+            date: dateVal,
+            department: dept,
+            data: {
+                daily_actual: dAct.input.value,
+                daily_forecast: dFcst.input.value,
+                var1: dVar.input.value,
+                mtd_actual: mAct.input.value,
+                mtd_forecast: mFcst.input.value,
+                var2: mVar.input.value,
+                full_forecast: fullFcst.input.value,
+                full_budget: fullBudg.input.value
+                // var3: removed
+            }
+        };
+
+        try {
+            await saveKPIRecord(dept, record);
+            DOM.showToast("Record saved successfully!");
+            loadRecentRecords(dept);
+
+            // Clear inputs
+            dAct.input.value = '';
+            dFcst.input.value = '';
+            dVar.input.value = '';
+            mAct.input.value = '';
+            mFcst.input.value = '';
+            mVar.input.value = '';
+            fullFcst.input.value = '';
+            fullBudg.input.value = '';
+            // date.input.value = ''; // Keep date selected or clear?
+
+        } catch (error) {
+            console.error(error);
+            DOM.showToast("Failed to save record.", "error");
+        }
     });
     btnContainer.appendChild(saveBtn);
     card.appendChild(btnContainer);
@@ -7079,43 +7398,240 @@ function renderEngineeringMillForm(dept, metricName, card) {
     kpi.input.readOnly = true;
 
     const date = DOM.createInputGroup("Date", `input-${dept}-date`, "date");
-    date.input.valueAsDate = new Date();
+    date.input.value = ''; // Default to empty
 
     // Row 2
-    const dAct = DOM.createInputGroup("Daily Actual(%)", `input-${dept}-daily-act-pct`, "number");
-    const dFcst = DOM.createInputGroup("Daily Forecast(%)", `input-${dept}-daily-fcst-pct`, "number");
+    const dAct = DOM.createInputGroup("Daily Actual(%)", `input-${dept}-daily-act-pct`, "text"); // Changed to text
+    const dFcst = DOM.createInputGroup("Daily Forecast(%)", `input-${dept}-daily-fcst-pct`, "text"); // Changed to text
     const dVar = DOM.createInputGroup("Var %", `input-${dept}-daily-var`, "text");
     dVar.input.readOnly = true;
     attachVarianceListener(dAct.input, dFcst.input, dVar.input);
 
+    // Lookup Daily Forecast from Fixed Inputs (using Full Forecast)
+    date.input.addEventListener('change', async () => {
+        const dateVal = date.input.value;
+        if (!dateVal) return;
+
+        // Parse YYYY-MM from input for matching
+        const searchMonth = `${dateVal.substring(0, 7)}`; // "YYYY-MM"
+
+        try {
+            const records = await fetchKPIRecords(dept);
+
+            const target = records.find(r => {
+                if (r.subtype !== 'fixed_input') return false;
+                if (r.metric_name.trim().toLowerCase() !== metricName.trim().toLowerCase()) return false;
+
+                // Match prefix of the stored date (YYYY-MM-01) with searchMonth (YYYY-MM)
+                return r.date && r.date.startsWith(searchMonth);
+            });
+
+            if (target && target.data) {
+                // alert("Record found: " + JSON.stringify(target.data));
+
+                // Populate Daily Forecast from Full Forecast value in Fixed Inputs
+                if (target.data.full_forecast != null) {
+                    let val = target.data.full_forecast;
+                    if (typeof val === 'number') {
+                        val = val + '%';
+                    } else if (typeof val === 'string' && !val.includes('%')) {
+                        val = val + '%';
+                    }
+
+                    dFcst.input.value = val;
+                    dFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
+
+                    // Also populate Full Forecast (b)
+                    if (typeof fullFcst !== 'undefined') {
+                        fullFcst.input.value = val;
+                        fullFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                }
+
+                // Populate Full Budget (c) from Full Budget value in Fixed Inputs
+                if (target.data.full_budget != null) {
+                    let val = target.data.full_budget;
+                    if (typeof val === 'number') {
+                        val = val + '%';
+                    } else if (typeof val === 'string' && !val.includes('%')) {
+                        val = val + '%';
+                    }
+
+                    if (typeof fullBudg !== 'undefined') {
+                        fullBudg.input.value = val;
+                        fullBudg.input.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                }
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    });
+
     // Row 3
-    const mAct = DOM.createInputGroup("MTD Actual", `input-${dept}-mtd-act`, "number");
-    const mFcst = DOM.createInputGroup("MTD Forecast", `input-${dept}-mtd-fcst`, "number");
+    // Row 3
+    const mAct = DOM.createInputGroup("MTD Actual", `input-${dept}-mtd-act`, "text"); // Changed to text
+    const mFcst = DOM.createInputGroup("MTD Forecast", `input-${dept}-mtd-fcst`, "text"); // Changed to text
     const mVar = DOM.createInputGroup("Var %", `input-${dept}-mtd-var`, "text");
     mVar.input.readOnly = true;
     attachVarianceListener(mAct.input, mFcst.input, mVar.input);
 
+    // Auto-Populate MTD Forecast from Daily Forecast for Mill
+    dFcst.input.addEventListener('input', () => {
+        let val = dFcst.input.value;
+        if (val) {
+            if (!val.includes('%')) {
+                val = val + '%';
+            }
+            mFcst.input.value = val;
+            mFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+            mFcst.input.value = '';
+        }
+    });
+
+    // Auto-Calculate MTD Actual (Average)
+    const updateMTDActual = async () => {
+        const dateVal = date.input.value;
+        const currentDailyValStr = dAct.input.value;
+
+        if (!dateVal) return;
+
+        // Parse current daily actual (remove % if present)
+        let currentDailyVal = 0;
+        if (currentDailyValStr) {
+            currentDailyVal = parseFloat(currentDailyValStr.replace('%', ''));
+        }
+        if (isNaN(currentDailyVal)) currentDailyVal = 0;
+
+        const [y, m, d] = dateVal.split('-').map(Number);
+
+        // Logic for 1st of month: Mirror Daily
+        if (d === 1) {
+            if (currentDailyValStr) {
+                mAct.input.value = Math.round(currentDailyVal) + '%';
+                mAct.input.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            return;
+        }
+
+        // Logic for subsequent days: Average of (Previous Records + Current)
+        try {
+            const records = await fetchKPIRecords(dept);
+            const selectedMonth = m - 1; // JS Month 0-11
+            const selectedYear = y;
+
+            // Filter for previous days in same month
+            const matchedRecords = records.filter(r => {
+                if (r.metric_name !== metricName) return false;
+                if (!r.data || r.data.daily_actual == null) return false;
+                if (r.subtype === 'fixed_input') return false; // Exclude fixed inputs
+
+                // Parse record date
+                const [rY, rM, rD] = r.date.split('-').map(Number);
+
+                // Check month/year match
+                if ((rM - 1) !== selectedMonth || rY !== selectedYear) return false;
+
+                // Check if strictly before current date
+                if (rD >= d) return false;
+
+                return true;
+            });
+
+            // Sum previous
+            let sum = 0;
+            let count = 0;
+
+            matchedRecords.forEach(r => {
+                let val = r.data.daily_actual;
+                // Handle various formats
+                if (typeof val === 'string') {
+                    val = parseFloat(val.replace('%', ''));
+                }
+
+                if (!isNaN(val)) {
+                    sum += val;
+                    count++;
+                }
+            });
+
+            // Add Current Input
+            sum += currentDailyVal;
+            count += 1;
+
+            const average = count > 0 ? (sum / count) : 0;
+            mAct.input.value = Math.round(average) + '%';
+            mAct.input.dispatchEvent(new Event('input', { bubbles: true }));
+
+        } catch (e) {
+            console.error("Error calculating MTD Actual", e);
+        }
+    };
+
+    // Attach listeners for MTD Actual
+    dAct.input.addEventListener('input', updateMTDActual);
+    date.input.addEventListener('change', updateMTDActual);
+
     // Row 4
-    const fullFcst = DOM.createInputGroup("Full Forecast (b)", `input-${dept}-full-fcst`, "number");
-    const fullBudg = DOM.createInputGroup("Full Budget (c)", `input-${dept}-full-budg`, "number");
-    const budgVar = DOM.createInputGroup("Var %", `input-${dept}-budg-var`, "text");
-    budgVar.input.readOnly = true;
+    const fullFcst = DOM.createInputGroup("Full Forecast (b)", `input-${dept}-full-fcst`, "text"); // Changed to text
+    const fullBudg = DOM.createInputGroup("Full Budget (c)", `input-${dept}-full-budg`, "text"); // Changed to text
     // Note: No Outlook (a) in this form, so comparing Full Forecast vs Budget usually
-    attachVarianceListener(fullFcst.input, fullBudg.input, budgVar.input);
 
 
     // Add to Grid
     add(kpi); add(date); grid.appendChild(document.createElement('div')); // Spacer
     add(dAct); add(dFcst); add(dVar);
     add(mAct); add(mFcst); add(mVar);
-    add(fullFcst); add(fullBudg); add(budgVar);
+    add(fullFcst); add(fullBudg); grid.appendChild(document.createElement('div')); // Spacer for removed Var
 
     card.appendChild(grid);
 
     // Save Button
     const btnContainer = document.createElement('div');
-    const saveBtn = DOM.createButton("Save Record", () => {
-        alert("Saving functionality for Mill form to be implemented.");
+    const saveBtn = DOM.createButton("Save Record", async () => {
+        const dateVal = date.input.value;
+        if (!dateVal) {
+            alert("Please select a date.");
+            return;
+        }
+
+        const record = {
+            metric_name: metricName,
+            date: dateVal,
+            department: dept,
+            data: {
+                daily_actual: dAct.input.value,
+                daily_forecast: dFcst.input.value,
+                var1: dVar.input.value,
+                mtd_actual: mAct.input.value,
+                mtd_forecast: mFcst.input.value,
+                var2: mVar.input.value,
+                full_forecast: fullFcst.input.value,
+                full_budget: fullBudg.input.value,
+                var3: ''
+            }
+        };
+
+        try {
+            await saveKPIRecord(dept, record);
+            DOM.showToast("Record saved successfully!");
+            loadRecentRecords(dept);
+
+            // Clear inputs
+            dAct.input.value = '';
+            dFcst.input.value = '';
+            dVar.input.value = '';
+            mAct.input.value = '';
+            mFcst.input.value = '';
+            mVar.input.value = '';
+            fullFcst.input.value = '';
+            fullBudg.input.value = '';
+
+        } catch (e) {
+            console.error(e);
+            alert("Failed to save record: " + e.message);
+        }
     });
     btnContainer.appendChild(saveBtn);
     card.appendChild(btnContainer);
@@ -8137,8 +8653,8 @@ async function loadRecentRecords(dept) {
             return;
         }
 
-        // Handling for Anx Excavators OR Dump Trucks OR ART Dump Trucks OR Wheel Loaders OR Graders (Identical columns)
-        if (STATE.currentMetric === 'Anx Excavators' || STATE.currentMetric === 'Dump Trucks' || STATE.currentMetric === 'ART Dump Trucks' || STATE.currentMetric === 'Wheel Loaders' || STATE.currentMetric === 'Graders') {
+        // Handling for Anx Excavators OR Dump Trucks OR ART Dump Trucks OR Wheel Loaders OR Dozers OR Graders (Identical columns)
+        if (STATE.currentMetric === 'Anx Excavators' || STATE.currentMetric === 'Dump Trucks' || STATE.currentMetric === 'ART Dump Trucks' || STATE.currentMetric === 'Wheel Loaders' || STATE.currentMetric === 'Dozers' || STATE.currentMetric === 'Graders') {
             filteredRecords = records.filter(r => r.metric_name === STATE.currentMetric && r.subtype !== 'fixed_input');
 
             // Date | Qty Avail | D.Act(%) | D.Fcst(%) | Var% | MTD.Act | MTD.Fcst | Var% | F.Fcst | F.Budg | Action
@@ -8176,6 +8692,61 @@ async function loadRecentRecords(dept) {
                 tr.innerHTML = `
                     <td style="padding: 12px;">${dateDisplay}</td>
                     <td style="padding: 12px;">${val(r.data.qty_available)}</td>
+                    <td style="padding: 12px;">${val(r.data.daily_actual)}</td>
+                    <td style="padding: 12px;">${val(r.data.daily_forecast)}</td>
+                    <td style="padding: 12px;">${val(r.data.var1)}</td>
+                    <td style="padding: 12px;">${val(r.data.mtd_actual)}</td>
+                    <td style="padding: 12px;">${val(r.data.mtd_forecast)}</td>
+                    <td style="padding: 12px;">${val(r.data.var2)}</td>
+                    <td style="padding: 12px;">${val(r.data.full_forecast)}</td>
+                    <td style="padding: 12px;">${val(r.data.full_budget)}</td>
+                    <td style="padding: 12px;">
+                        <button onclick="editRecord(${r.id})" style="margin-right:8px; padding:2px 6px; cursor:pointer;" title="Edit">✏️</button>
+                        <button onclick="deleteRecord(${r.id})" style="padding:2px 6px; cursor:pointer; color:red;" title="Delete">🗑️</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            return;
+        }
+
+        // Handling for Crusher (No Qty Available)
+        if (STATE.currentMetric === 'Crusher') {
+            filteredRecords = records.filter(r => r.metric_name === STATE.currentMetric && r.subtype !== 'fixed_input');
+
+            // Date | D.Act(%) | D.Fcst(%) | Var% | MTD.Act | MTD.Fcst | Var% | F.Fcst | F.Budg | Action
+            thead.innerHTML = `
+                <th style="padding: 12px; text-align: left; min-width: 90px;">Date</th>
+                <th style="padding: 12px; text-align: left;">D.Act(%)</th>
+                <th style="padding: 12px; text-align: left;">D.Fcst(%)</th>
+                <th style="padding: 12px; text-align: left;">Var%</th>
+                <th style="padding: 12px; text-align: left;">MTD.Act</th>
+                <th style="padding: 12px; text-align: left;">MTD.Fcst</th>
+                <th style="padding: 12px; text-align: left;">Var%</th>
+                <th style="padding: 12px; text-align: left;">F.Fcst</th>
+                <th style="padding: 12px; text-align: left;">F.Budg</th>
+                <th style="padding: 12px; text-align: left;">Action</th>
+            `;
+
+            if (filteredRecords.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" style="padding: 12px; text-align: center;">No records found for ${STATE.currentMetric}</td></tr>`;
+                return;
+            }
+
+            filteredRecords.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.style.borderTop = '1px solid #e5e7eb';
+
+                let dateDisplay = r.date;
+                if (r.date && r.date.includes('-')) {
+                    const [y, m, d] = r.date.split('-');
+                    dateDisplay = `${d}-${m}-${y}`;
+                }
+
+                const val = (v) => (v !== undefined && v !== null && v !== '') ? v : '-';
+
+                tr.innerHTML = `
+                    <td style="padding: 12px;">${dateDisplay}</td>
                     <td style="padding: 12px;">${val(r.data.daily_actual)}</td>
                     <td style="padding: 12px;">${val(r.data.daily_forecast)}</td>
                     <td style="padding: 12px;">${val(r.data.var1)}</td>
