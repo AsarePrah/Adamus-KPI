@@ -18,7 +18,12 @@ const DOM = {
         const input = document.createElement('input');
         input.id = id;
         input.type = type;
-        input.placeholder = placeholder || labelText;
+        // Only show placeholder for KPI and Date if not provided, otherwise keep clean
+        if (labelText === 'KPI' || labelText === 'Date') {
+            input.placeholder = placeholder || labelText;
+        } else {
+            input.placeholder = placeholder || '';
+        }
         input.className = 'form-input';
 
         input.style.width = '100%';

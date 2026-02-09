@@ -802,7 +802,7 @@ function renderSidebar() {
     const userDisplay = STATE.currentUser ? STATE.currentUser.username : 'User';
 
     nav.innerHTML = `
-        <h2 style="margin-bottom: 20px;">Adamus KPI</h2>
+        <h2 style="margin-bottom: 20px; color: #fbbf24;">Adamus KPI</h2>
         <div style="margin-bottom:20px; padding:10px; background:var(--bg-secondary); border-radius:6px; font-size:14px;">
             Logged in as: <strong>${userDisplay}</strong>
             <div style="margin-top:5px; text-align:right;">
