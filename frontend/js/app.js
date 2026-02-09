@@ -8,7 +8,7 @@ const STATE = {
     currentMetric: "Gold Contained"
 };
 
-const DEPARTMENTS = ["Geology", "Mining", "Crushing", "Milling_CIL", "OHS", "Engineering", "GM_Report"];
+const DEPARTMENTS = ["Geology", "Mining", "Crushing", "Milling_CIL", "OHS", "Engineering", "IT", "GM_Report"];
 
 const DEPT_METRICS = {
     "Milling_CIL": [
@@ -57,6 +57,7 @@ const DEPT_METRICS = {
         "Crusher",
         "Mill"
     ],
+    "IT": [],
     "GM_Report": []
 };
 
@@ -67,12 +68,434 @@ document.addEventListener('DOMContentLoaded', () => {
             STATE.currentUser = JSON.parse(storedUser);
             initApp();
         } catch (e) {
-            renderLoginScreen();
+            renderHomePage(); // Changed from renderLoginScreen
         }
     } else {
-        renderLoginScreen();
+        renderHomePage(); // Changed from renderLoginScreen
     }
 });
+
+function renderHomePage() {
+    const sidebar = document.getElementById('sidebar');
+    const content = document.getElementById('content');
+    if (sidebar) sidebar.style.display = 'none';
+
+    content.innerHTML = '';
+
+    const container = document.createElement('div');
+    container.style.maxWidth = '600px';
+    container.style.margin = '80px auto';
+    container.style.padding = '40px';
+    container.style.textAlign = 'center';
+    container.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+
+    // Title
+    const title = document.createElement('h1');
+    title.textContent = "Key Performance Indicators(KPI)";
+    title.style.color = '#000';
+    title.style.fontSize = '32px';
+    title.style.fontWeight = 'bold';
+    title.style.marginBottom = '10px';
+    container.appendChild(title);
+
+    // Subtitle
+    const subtitle = document.createElement('p');
+    subtitle.textContent = "Adamus Resources Limited (KPI-2026).";
+    subtitle.style.color = '#666';
+    subtitle.style.fontSize = '18px';
+    subtitle.style.marginBottom = '50px';
+    container.appendChild(subtitle);
+
+    // Buttons Container
+    const btnContainer = document.createElement('div');
+    btnContainer.style.display = 'flex';
+    btnContainer.style.flexDirection = 'column';
+    btnContainer.style.gap = '20px';
+    btnContainer.style.alignItems = 'center';
+
+    // Login Button
+    const loginBtn = document.createElement('button');
+    loginBtn.textContent = "Login";
+    loginBtn.style.padding = '12px 40px';
+    loginBtn.style.fontSize = '16px';
+    loginBtn.style.backgroundColor = '#fbbf24'; // Gold
+    loginBtn.style.border = 'none';
+    loginBtn.style.borderRadius = '5px';
+    loginBtn.style.cursor = 'pointer';
+    loginBtn.style.fontWeight = 'bold';
+    loginBtn.style.color = '#000';
+    loginBtn.style.width = '250px';
+    loginBtn.onclick = () => renderLoginScreen();
+    btnContainer.appendChild(loginBtn);
+
+    // Create Account Link
+    const createLink = document.createElement('a');
+    createLink.textContent = "New User? Create Account";
+    createLink.style.color = '#2563eb';
+    createLink.style.textDecoration = 'none';
+    createLink.style.fontSize = '16px';
+    createLink.style.cursor = 'pointer';
+    createLink.onclick = function () {
+        verifyAdminAccess(() => renderRegisterScreen());
+    };
+    btnContainer.appendChild(createLink);
+
+    // Users Directory Link
+    const dirLink = document.createElement('a');
+    dirLink.textContent = "Users Directory";
+    dirLink.style.color = '#2563eb';
+    dirLink.style.textDecoration = 'none';
+    dirLink.style.fontSize = '16px';
+    dirLink.style.cursor = 'pointer';
+    dirLink.onclick = function () {
+        verifyAdminAccess(() => renderUsersDirectory());
+    };
+    btnContainer.appendChild(dirLink);
+
+    container.appendChild(btnContainer);
+    content.appendChild(container);
+}
+
+function verifyAdminAccess(onSuccess) {
+    const content = document.getElementById('content');
+    content.innerHTML = '';
+
+    const container = document.createElement('div');
+    container.style.maxWidth = '400px';
+    container.style.margin = '80px auto';
+    container.style.padding = '30px';
+    container.style.background = 'white';
+    container.style.borderRadius = '12px';
+    container.style.boxShadow = 'var(--shadow-lg)';
+    container.style.textAlign = 'center';
+    container.style.border = '1px solid var(--border)';
+
+    const title = document.createElement('h2');
+    title.textContent = 'Admin Verification';
+    title.style.marginBottom = '10px';
+    title.style.color = '#dc2626'; // Red
+    container.appendChild(title);
+
+    const sub = document.createElement('p');
+    sub.textContent = "Please enter Admin credentials to proceed.";
+    sub.style.marginBottom = '20px';
+    sub.style.fontSize = '14px';
+    sub.style.color = '#6b7280';
+    container.appendChild(sub);
+
+    const username = DOM.createInputGroup('Admin Username', 'ver-username');
+    const password = DOM.createInputGroup('Admin Password', 'ver-password', 'password');
+
+    container.appendChild(username.container);
+    container.appendChild(password.container);
+
+    const btnContainer = document.createElement('div');
+    btnContainer.style.display = 'flex';
+    btnContainer.style.gap = '10px';
+    btnContainer.style.marginTop = '20px';
+    btnContainer.style.flexDirection = 'column';
+
+    const verifyBtn = DOM.createButton('Verify', () => {
+        const u = username.input.value;
+        const p = password.input.value;
+
+        const users = JSON.parse(localStorage.getItem('kpi_users') || '[]');
+
+        // Failsafe for initial admin
+        if (users.length === 0 && u === 'admin' && p === 'admin') {
+            // Auto create default admin if not exists
+            users.push({ username: 'admin', password: 'admin', role: 'Admin' });
+            localStorage.setItem('kpi_users', JSON.stringify(users));
+            onSuccess();
+            return;
+        }
+
+        const user = users.find(x => x.username === u && x.password === p);
+        if (user && user.role === 'Admin') {
+            onSuccess();
+        } else {
+            alert('Access Denied: Invalid credentials or not an Admin.');
+        }
+    });
+    verifyBtn.style.width = '100%';
+    verifyBtn.style.backgroundColor = '#dc2626'; // Red for security context
+
+    const cancelBtn = DOM.createButton('Cancel', () => {
+        renderHomePage();
+    }, 'ghost');
+    cancelBtn.style.width = '100%';
+
+    btnContainer.appendChild(verifyBtn);
+    btnContainer.appendChild(cancelBtn);
+    container.appendChild(btnContainer);
+    content.appendChild(container);
+}
+
+function renderUsersDirectory() {
+    const sidebar = document.getElementById('sidebar');
+    const content = document.getElementById('content');
+    if (sidebar) sidebar.style.display = 'none';
+
+    content.innerHTML = '';
+
+    const container = document.createElement('div');
+    container.style.maxWidth = '800px';
+    container.style.margin = '40px auto';
+    container.style.padding = '30px';
+    container.style.background = 'white';
+    container.style.borderRadius = '12px';
+    container.style.boxShadow = '0 0 10px rgba(0,0,0,0.1)';
+
+    const header = document.createElement('div');
+    header.style.display = 'flex';
+    header.style.justifyContent = 'space-between';
+    header.style.alignItems = 'center';
+    header.style.marginBottom = '20px';
+
+    const h2 = document.createElement('h2');
+    h2.textContent = "Users Directory";
+    header.appendChild(h2);
+
+    const backBtn = document.createElement('button');
+    backBtn.textContent = "Back to Home";
+    backBtn.style.padding = '8px 16px';
+    backBtn.style.cursor = 'pointer';
+    backBtn.onclick = () => renderHomePage();
+    header.appendChild(backBtn);
+
+    container.appendChild(header);
+
+    // Users List
+    const users = JSON.parse(localStorage.getItem('kpi_users') || '[]');
+
+    if (users.length === 0) {
+        const p = document.createElement('p');
+        p.textContent = "No users found.";
+        container.appendChild(p);
+    } else {
+        const table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+
+        const thead = document.createElement('thead');
+        thead.innerHTML = `
+            <tr style="background-color: #f3f4f6; text-align: left;">
+                <th style="padding: 12px; border-bottom: 2px solid #ddd;">Username</th>
+                <th style="padding: 12px; border-bottom: 2px solid #ddd;">Password</th>
+                <th style="padding: 12px; border-bottom: 2px solid #ddd;">Department</th>
+                <th style="padding: 12px; border-bottom: 2px solid #ddd;">Role</th>
+                <th style="padding: 12px; border-bottom: 2px solid #ddd;">Action</th>
+            </tr>
+        `;
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        users.forEach((user, index) => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid #eee';
+
+            tr.innerHTML = `
+                <td style="padding: 12px;">${user.username}</td>
+                <td style="padding: 12px;">${user.password || '****'}</td>
+                <td style="padding: 12px;">${user.department || '-'}</td>
+                <td style="padding: 12px;">${user.role || '-'}</td>
+                <td style="padding: 12px;"></td> 
+            `;
+
+            // Actions
+            const actionsTd = tr.querySelector('td:last-child');
+
+            // Edit Button (Icon)
+            const editBtn = document.createElement('button');
+            editBtn.innerHTML = "&#9998;"; // Pencil Icon
+            editBtn.title = "Edit User";
+            editBtn.style.color = '#2563eb'; // Blue
+            editBtn.style.border = 'none';
+            editBtn.style.background = 'none';
+            editBtn.style.cursor = 'pointer';
+            editBtn.style.fontSize = '18px';
+            editBtn.style.marginRight = '10px';
+            editBtn.onclick = () => renderEditUserScreen(user, index);
+            actionsTd.appendChild(editBtn);
+
+            // Delete Button (Icon)
+            const delBtn = document.createElement('button');
+            delBtn.innerHTML = "&#128465;"; // Trash Can Icon
+            delBtn.title = "Remove User";
+            delBtn.style.color = 'red';
+            delBtn.style.border = 'none';
+            delBtn.style.background = 'none';
+            delBtn.style.cursor = 'pointer';
+            delBtn.style.fontSize = '18px';
+            delBtn.onclick = () => {
+                if (confirm(`Are you sure you want to remove user '${user.username}'?`)) {
+                    users.splice(index, 1);
+                    localStorage.setItem('kpi_users', JSON.stringify(users));
+                    renderUsersDirectory(); // Refresh
+                }
+            };
+            actionsTd.appendChild(delBtn);
+
+            tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        container.appendChild(table);
+    }
+
+    content.appendChild(container);
+}
+
+function renderEditUserScreen(user, index) {
+    const sidebar = document.getElementById('sidebar');
+    const content = document.getElementById('content');
+    if (sidebar) sidebar.style.display = 'none';
+
+    content.innerHTML = '';
+
+    const container = document.createElement('div');
+    container.style.maxWidth = '400px';
+    container.style.margin = '40px auto';
+    container.style.padding = '30px';
+    container.style.background = 'white';
+    container.style.borderRadius = '12px';
+    container.style.boxShadow = 'var(--shadow-lg)';
+    container.style.textAlign = 'center';
+    container.style.border = '1px solid var(--border)';
+
+    const title = document.createElement('h2');
+    title.textContent = 'Edit User';
+    title.style.marginBottom = '20px';
+    container.appendChild(title);
+
+    const username = DOM.createInputGroup('Username', 'edit-username');
+    username.input.value = user.username;
+    // Ideally, username should be read-only or carefully managed to avoid duplication if changed
+    username.input.disabled = true; // Let's keep it immutable for simplicity for now, or allow change with dupe check
+
+    const password = DOM.createInputGroup('Password', 'edit-password', 'text'); // Visible for editing
+    password.input.value = user.password;
+
+    // Department Select (Reuse logic or simplify)
+    const deptDiv = document.createElement('div');
+    deptDiv.style.marginBottom = '10px';
+    deptDiv.style.textAlign = 'left';
+
+    const deptLabel = document.createElement('label');
+    deptLabel.className = 'small';
+    deptLabel.textContent = 'Department';
+    deptLabel.style.display = 'block';
+    deptLabel.style.marginBottom = '4px';
+    deptLabel.style.fontSize = '12px';
+    deptLabel.style.color = '#6b7280';
+
+    const deptSelect = document.createElement('select');
+    deptSelect.id = 'edit-dept';
+    deptSelect.style.width = '100%';
+    deptSelect.style.padding = '8px';
+    deptSelect.style.border = '1px solid #d1d5db';
+    deptSelect.style.borderRadius = '6px';
+    deptSelect.style.boxSizing = 'border-box';
+    deptSelect.style.backgroundColor = 'white';
+
+    // Add options
+    const defOpt = document.createElement('option');
+    defOpt.value = '';
+    defOpt.textContent = 'Select Department';
+    deptSelect.appendChild(defOpt);
+
+    DEPARTMENTS.forEach(d => {
+        const op = document.createElement('option');
+        op.value = d;
+        op.textContent = d.replace('_', ' ');
+        if (d === user.department) op.selected = true;
+        deptSelect.appendChild(op);
+    });
+
+    deptLabel.appendChild(deptSelect);
+    deptDiv.appendChild(deptLabel);
+
+    // Role Select
+    const roleDiv = document.createElement('div');
+    roleDiv.style.marginBottom = '10px';
+    roleDiv.style.textAlign = 'left';
+
+    const roleLabel = document.createElement('label');
+    roleLabel.className = 'small';
+    roleLabel.textContent = 'Role';
+    roleLabel.style.display = 'block';
+    roleLabel.style.marginBottom = '4px';
+    roleLabel.style.fontSize = '12px';
+    roleLabel.style.color = '#6b7280';
+
+    const roleSelect = document.createElement('select');
+    roleSelect.id = 'edit-role';
+    roleSelect.style.width = '100%';
+    roleSelect.style.padding = '8px';
+    roleSelect.style.border = '1px solid #d1d5db';
+    roleSelect.style.borderRadius = '6px';
+    roleSelect.style.boxSizing = 'border-box';
+    roleSelect.style.backgroundColor = 'white';
+
+    const ROLES = ['GM', 'HOD', 'Admin', 'Staff'];
+    const defRole = document.createElement('option');
+    defRole.value = '';
+    defRole.textContent = 'Select Role';
+    roleSelect.appendChild(defRole);
+
+    ROLES.forEach(r => {
+        const op = document.createElement('option');
+        op.value = r;
+        op.textContent = r;
+        if (r === user.role) op.selected = true;
+        roleSelect.appendChild(op);
+    });
+
+    roleLabel.appendChild(roleSelect);
+    roleDiv.appendChild(roleLabel);
+
+    container.appendChild(username.container);
+    container.appendChild(password.container);
+    container.appendChild(deptDiv);
+    container.appendChild(roleDiv);
+
+    const saveBtn = DOM.createButton('Save Changes', () => {
+        const p = password.input.value;
+        const d = deptSelect.value;
+        const r = roleSelect.value;
+
+        if (!p || !d || !r) { alert('Please fill all fields'); return; }
+
+        const users = JSON.parse(localStorage.getItem('kpi_users') || '[]');
+        // check if user still exists at index? Or just find by username
+        // Since username is immutable here, find by username
+        const targetIndex = users.findIndex(u => u.username === user.username);
+
+        if (targetIndex !== -1) {
+            users[targetIndex].password = p;
+            users[targetIndex].department = d;
+            users[targetIndex].role = r;
+            localStorage.setItem('kpi_users', JSON.stringify(users));
+            alert('User updated successfully!');
+            renderUsersDirectory();
+        } else {
+            alert('Error: User not found.');
+            renderUsersDirectory();
+        }
+    });
+    saveBtn.style.width = '100%';
+    saveBtn.style.marginTop = '20px';
+    saveBtn.style.backgroundColor = '#10b981'; // Green
+
+    const cancelBtn = DOM.createButton('Cancel', () => {
+        renderUsersDirectory();
+    }, 'ghost');
+    cancelBtn.style.width = '100%';
+    cancelBtn.style.marginTop = '10px';
+
+    container.appendChild(saveBtn);
+    container.appendChild(cancelBtn);
+    content.appendChild(container);
+}
 
 function initApp() {
     // Failsafe: if no user logic, redirect to login
@@ -82,7 +505,7 @@ function initApp() {
         if (storedUser) {
             STATE.currentUser = JSON.parse(storedUser);
         } else {
-            renderLoginScreen();
+            renderHomePage();
             return;
         }
     }
@@ -164,18 +587,18 @@ function renderLoginScreen() {
         }
     };
 
-    const registerLink = document.createElement('div');
-    registerLink.innerHTML = "New user? <span style='color:var(--primary); cursor:pointer; font-weight:600;'>Create Account</span>";
-    registerLink.style.marginTop = '20px';
-    registerLink.style.fontSize = '14px';
-    registerLink.querySelector('span').onclick = () => renderRegisterScreen();
+    const backLink = document.createElement('div');
+    backLink.innerHTML = "<span style='color:var(--primary); cursor:pointer; font-weight:600;'>&larr; Back to Home</span>";
+    backLink.style.marginTop = '20px';
+    backLink.style.fontSize = '14px';
+    backLink.onclick = () => renderHomePage();
 
     // Append all
     btnContainer.appendChild(loginBtn);
     btnContainer.appendChild(cancelBtn);
     container.appendChild(btnContainer);
     container.appendChild(forgotLink);
-    container.appendChild(registerLink);
+    container.appendChild(backLink);
 
     content.appendChild(container);
 }
@@ -318,8 +741,8 @@ function renderRegisterScreen() {
     createBtn.style.width = '100%';
     createBtn.style.marginTop = '20px';
 
-    const backBtn = DOM.createButton('Back to Login', () => {
-        renderLoginScreen();
+    const backBtn = DOM.createButton('Back to Home', () => {
+        renderHomePage();
     }, 'ghost');
     backBtn.style.width = '100%';
     backBtn.style.marginTop = '10px';
@@ -352,7 +775,7 @@ function performLogin(u, p) {
 function logout() {
     STATE.currentUser = null;
     localStorage.removeItem('kpi_current_user');
-    renderLoginScreen();
+    renderHomePage();
 }
 
 function renderSidebar() {
@@ -9165,6 +9588,53 @@ function renderGMReport(card) {
     title.style.transform = 'translateX(-50%)';
     controls.appendChild(title);
 
+    // PDF Export Link
+    const pdfLink = document.createElement('a');
+    pdfLink.textContent = "PDF";
+    pdfLink.href = "#";
+    pdfLink.style.color = '#fbbf24'; // Goldish
+    pdfLink.style.textDecoration = 'none';
+    pdfLink.style.fontWeight = 'bold';
+    pdfLink.style.fontSize = '14px';
+    pdfLink.style.border = '1px solid #fbbf24';
+    pdfLink.style.padding = '5px 10px';
+    pdfLink.style.borderRadius = '4px';
+    pdfLink.style.position = 'absolute'; // Position absolute
+    pdfLink.style.right = '20px'; // Right padding
+    pdfLink.style.top = '50%'; // Vertically centered
+    pdfLink.style.transform = 'translateY(-50%)'; // Vertically centered
+    pdfLink.style.zIndex = '10'; // Above other elements
+
+    pdfLink.onclick = (e) => {
+        e.preventDefault();
+
+        // Hide PDF link during generation
+        pdfLink.style.display = 'none';
+
+        const opt = {
+            margin: 0.2,
+            filename: `GM_Report_${dateInput.value}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' }
+        };
+
+        // Use html2pdf library (assumed loaded in index.html)
+        if (typeof html2pdf !== 'undefined') {
+            html2pdf().set(opt).from(card).save().then(() => {
+                pdfLink.style.display = 'block'; // Show again
+            }).catch(err => {
+                console.error(err);
+                pdfLink.style.display = 'block';
+                alert("Error generating PDF. Please ensure html2pdf is loaded.");
+            });
+        } else {
+            alert("PDF Generation library not loaded.");
+            pdfLink.style.display = 'block';
+        }
+    };
+    controls.appendChild(pdfLink);
+
     card.appendChild(controls);
 
     // 2. Report Container (Table)
@@ -9245,22 +9715,10 @@ function renderGMSection(table, areaLabel, deptKey, records, dateStr) {
         headerRowHTML += `<th style="padding: 5px;">Day-2</th>`;
     } else if (deptKey === "Engineering") {
         headerRowHTML += `<th style="padding: 5px;">Qty Available</th>`;
-    } else if (deptKey === "Geology" || deptKey === "Mining") {
-        // Mining has 'Grade - Ore Mined' but as a separate KPI row, not column usually?
-        // Screenshot for Mining shows "Daily Actual", "Grade (Day-7)" - No, wait, looking at row 'Ore Mined', columns are:
-        // Daily Actual | Grade (Day-7) ? No, screenshot is:
-        // Ore Mined (t) | 6,732 | [Blank] | ...
-        // Grade - Ore Mined (g/t) | 0.62 | [Blank] ...
-
-        // Actually, let's keep it simple. If the screenshot implies a rigid grid, we should try to fit it.
-        // Most sections have "Daily Actual" then "Daily Forecast".
-        // Milling inserts "Day-2". Engineering inserts "Qty Available".
-        // To align them, we might need a blank column for others?
-        // Or just let them be different widths? The screenshot looks like ONE table with aligned columns globally except those specific ones.
-        // Let's assume a "Extra Column" slot.
-        headerRowHTML += `<th style="padding: 5px; width: 60px;"></th>`; // Spacer/Extra
+    } else if (deptKey === "Geology") {
+        headerRowHTML += `<th style="padding: 5px; width: 60px;">Grade (Day-7)</th>`;
     } else {
-        headerRowHTML += `<th style="padding: 5px; width: 60px;"></th>`; // Spacer
+        headerRowHTML += `<th style="padding: 5px; width: 60px;"></th>`; // Spacer/Extra
     }
 
     headerRowHTML += `
@@ -9344,11 +9802,13 @@ function renderGMSection(table, areaLabel, deptKey, records, dateStr) {
         // Daily Actual
         rowHTML += `<td style="text-align: center;">${val(d.daily_actual)}</td>`;
 
-        // Extra Column (Day-2, Qty Avail, or Spacer)
+        // Extra Column (Day-2, Qty Avail, Grade-7, or Spacer)
         if (deptKey === "Milling_CIL") {
             rowHTML += `<td style="text-align: center;">${val(d.day2)}</td>`;
         } else if (deptKey === "Engineering") {
             rowHTML += `<td style="text-align: center;">${val(d.qty_available)}</td>`;
+        } else if (deptKey === "Geology" && metric === "Toll") {
+            rowHTML += `<td style="text-align: center;">${val(d.grade_7)}</td>`;
         } else {
             rowHTML += `<td></td>`;
         }
