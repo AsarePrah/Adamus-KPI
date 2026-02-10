@@ -10011,7 +10011,8 @@ function renderGMSection(table, areaLabel, deptKey, records, dateStr) {
 
     metrics.forEach((metric, index) => {
         // Find record for this date
-        const record = records.find(r => r.metric_name === metric && r.date === dateStr && r.subtype !== 'fixed_input');
+        const record = records.find(r => r.metric_name.trim() === metric.trim() && r.date === dateStr && r.subtype !== 'fixed_input');
+
 
         let rowHTML = `<tr style="background-color: #ddd; border-bottom: 1px solid #999;">`;
 
@@ -10056,6 +10057,23 @@ function renderGMSection(table, areaLabel, deptKey, records, dateStr) {
         };
 
         const d = record ? record.data : {};
+
+        // Helper to calculate variance if missing
+        const calcVar = (act, fcst) => {
+            if (act == null || fcst == null || act === '' || fcst === '') return null;
+            const a = parseFloat(String(act).replace(/,/g, ''));
+            const f = parseFloat(String(fcst).replace(/,/g, ''));
+            if (isNaN(a) || isNaN(f) || f === 0) return null;
+            return ((a - f) / f * 100).toFixed(0) + '%';
+        };
+
+        // Ensure variances exist
+        if (!d.var1 && d.daily_actual && d.daily_forecast) d.var1 = calcVar(d.daily_actual, d.daily_forecast);
+        if (!d.var2 && d.mtd_actual && d.mtd_forecast) d.var2 = calcVar(d.mtd_actual, d.mtd_forecast);
+        if (!d.var3 && d.full_forecast && d.full_budget) d.var3 = calcVar(d.full_forecast, d.full_budget); // Outlook vs Forecast? Or Forecast vs Budget?
+        // Note: var3 in form usually is Budget Var. Budget Var usually (Forecast - Budget) or (Outlook - Budget)?
+        // In form: Budget Var % (var3) compares Full Forecast (full_forecast) vs Full Budget (full_budget) ??
+        // Let's assume standard calc.
 
         const safeFormat = (v) => DOM.formatNumber(v);
         const cellStyle = 'padding: 2px; text-align: center;';
