@@ -9913,7 +9913,13 @@ function renderGMReport(card) {
             // Show loading
             reportTable.innerHTML = '<tr><td colspan="15" style="text-align:center; padding:20px;">Loading Report...</td></tr>';
 
-            const promises = deptsToFetch.map(d => fetchKPIRecords(d));
+            // Calculate Date Range for Sparklines (Last 7 days)
+            const d = new Date(selectedDate);
+            d.setDate(d.getDate() - 7);
+            const startDate = d.toISOString().split('T')[0];
+            const endDate = selectedDate;
+
+            const promises = deptsToFetch.map(d => fetchKPIRecords(d, startDate, endDate));
             const results = await Promise.all(promises);
 
             // Map results to dept
@@ -10138,8 +10144,8 @@ function drawSparkline(canvasId, records, metric, curDateStr) {
     }
 
     const values = dates.map(date => {
-        const rec = records.find(r => r.date === date && r.metric_name === metric);
-        if (!rec || !rec.data) return 0;
+        const rec = records.find(r => r.date === date && r.metric_name.trim() === metric.trim());
+        if (!rec || rec.data == null) return 0; // rec.data check
         let val = rec.data.daily_actual;
         if (typeof val === 'string') val = parseFloat(val.replace('%', '').replace(/,/g, ''));
         return isNaN(val) ? 0 : val;
