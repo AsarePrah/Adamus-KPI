@@ -537,7 +537,7 @@ function renderLoginScreen() {
     const title = document.createElement('h2');
     title.textContent = 'Adamus KPI Login';
     title.style.marginBottom = '20px';
-    title.style.color = 'var(--primary)';
+    title.style.color = '#2563eb';
     container.appendChild(title);
 
     const username = DOM.createInputGroup('Username', 'login-username');
@@ -567,7 +567,7 @@ function renderLoginScreen() {
     forgotLink.textContent = 'Forgot Password?';
     forgotLink.style.display = 'block';
     forgotLink.style.marginTop = '15px';
-    forgotLink.style.color = 'var(--primary)';
+    forgotLink.style.color = '#2563eb';
     forgotLink.style.cursor = 'pointer';
     forgotLink.style.fontSize = '13px';
     forgotLink.onclick = () => {
@@ -607,7 +607,7 @@ function renderLoginScreen() {
     };
 
     const backLink = document.createElement('div');
-    backLink.innerHTML = "<span style='color:var(--primary); cursor:pointer; font-weight:600;'>&larr; Back to Home</span>";
+    backLink.innerHTML = "<span style='color:#2563eb; cursor:pointer; font-weight:600;'>&larr; Back to Home</span>";
     backLink.style.marginTop = '20px';
     backLink.style.fontSize = '14px';
     backLink.onclick = () => renderHomePage();
@@ -8318,7 +8318,7 @@ async function loadRecentRecords(dept) {
                     <td style="padding: 12px;">${r.metric_name}</td>
                     <td style="padding: 12px;">${dateDisplay}</td>
                     <td style="padding: 12px;">${r.data.num_days || '-'}</td>
-                    <td style="padding: 12px;">${formatNum(r.data.full_forecast)}</td>
+                    <td style="padding: 12px;">${formatNum(r.data.full_forecast)}${dept === 'Engineering' ? '%' : ''}</td>
                     <td style="padding: 12px;">${formatNum(r.data.full_budget)}</td>
                     ${!hideRigColumn ? `<td style="padding: 12px;">${formatNum(r.data.forecast_per_rig)}</td>` : ''}
                     <td style="padding: 12px;">
@@ -9625,7 +9625,9 @@ function renderGMReport(card) {
     controls.style.backgroundColor = '#000'; // Dark background for top bar
     controls.style.color = '#fff';
     controls.style.padding = '10px';
-    controls.style.position = 'relative'; // Allow absolute positioning of title
+    controls.style.position = 'sticky'; // Allow absolute positioning of title AND stick to top
+    controls.style.top = '0';
+    controls.style.zIndex = '1000';
 
     // Date Picker
     const dateDiv = document.createElement('div');
@@ -9721,7 +9723,7 @@ function renderGMReport(card) {
     const reportTable = document.createElement('table');
     reportTable.style.width = '100%';
     reportTable.style.borderCollapse = 'collapse';
-    reportTable.style.fontSize = '12px';
+    reportTable.style.fontSize = '11px';
 
     card.appendChild(reportTable);
 
@@ -9783,38 +9785,41 @@ function renderGMSection(table, areaLabel, deptKey, records, dateStr) {
     const headerBg = '#8B4513';
     const headerColor = '#fff';
 
+    // Global CSS th style overrides tr background, so we must apply to th directly
+    const thStyle = `padding: 2px; background-color: ${headerBg}; color: ${headerColor}; font-size: 11px;`;
+
     let headerRowHTML = `
-        <tr style="background-color: ${headerBg}; color: ${headerColor}; font-weight: bold; text-align: center;">
-            <th style="padding: 5px; text-align: left; width: 80px;">Area</th>
-            <th style="padding: 5px; text-align: left;">KPI</th>
-            <th style="padding: 5px;">Daily Actual</th>
+        <tr style="font-weight: bold; text-align: center;">
+            <th style="${thStyle} text-align: left; width: 80px;">Area</th>
+            <th style="${thStyle} text-align: left;">KPI</th>
+            <th style="${thStyle}">Daily Actual</th>
     `;
 
     // Special Columns Handling
     if (deptKey === "Milling_CIL") {
-        headerRowHTML += `<th style="padding: 5px;">Day-2</th>`;
+        headerRowHTML += `<th style="${thStyle}">Day-2</th>`;
     } else if (deptKey === "Engineering") {
-        headerRowHTML += `<th style="padding: 5px;">Qty Available</th>`;
+        headerRowHTML += `<th style="${thStyle}">Qty Available</th>`;
     } else if (deptKey === "Geology") {
-        headerRowHTML += `<th style="padding: 5px; width: 60px;">Grade (Day-7)</th>`;
+        headerRowHTML += `<th style="${thStyle} width: 60px;">Grade (Day-7)</th>`;
     } else {
-        headerRowHTML += `<th style="padding: 5px; width: 60px;"></th>`; // Spacer/Extra
+        headerRowHTML += `<th style="${thStyle} width: 60px;"></th>`; // Spacer/Extra
     }
 
     headerRowHTML += `
-            <th style="padding: 5px;">Daily Forecast</th>
-            <th style="padding: 5px;">Variance</th>
-            <th style="padding: 5px; width: 30px;">Status</th>
-            <th style="padding: 5px;">MTD Actual</th>
-            <th style="padding: 5px;">MTD Forecast</th>
-            <th style="padding: 5px;">Variance</th>
-            <th style="padding: 5px; width: 30px;">Status</th>
-            <th style="padding: 5px;">Outlook (a)</th>
-            <th style="padding: 5px;">Forecast (b)</th>
-            <th style="padding: 5px;">Budget (c)</th>
-            <th style="padding: 5px;">Variance</th>
-            <th style="padding: 5px; width: 30px;">Status</th>
-            <th style="padding: 5px;">Last 7 Days Trend</th>
+            <th style="${thStyle}">Daily Forecast</th>
+            <th style="${thStyle}">Variance</th>
+            <th style="${thStyle} width: 30px;">Status</th>
+            <th style="${thStyle}">MTD Actual</th>
+            <th style="${thStyle}">MTD Forecast</th>
+            <th style="${thStyle}">Variance</th>
+            <th style="${thStyle} width: 30px;">Status</th>
+            <th style="${thStyle}">Outlook (a)</th>
+            <th style="${thStyle}">Forecast (b)</th>
+            <th style="${thStyle}">Budget (c)</th>
+            <th style="${thStyle}">Variance</th>
+            <th style="${thStyle} width: 30px;">Status</th>
+            <th style="${thStyle}">Last 7 Days Trend</th>
         </tr>
     `;
 
@@ -9839,10 +9844,10 @@ function renderGMSection(table, areaLabel, deptKey, records, dateStr) {
 
         // Area Cell (Only for first row of section)
         if (index === 0) {
-            rowHTML += `<td rowspan="${metrics.length}" style="background-color: #a0522d; color: white; font-weight: bold; vertical-align: middle; text-align: center; border-bottom: 1px solid #777;">${areaLabel}</td>`;
+            rowHTML += `<td rowspan="${metrics.length}" style="background-color: #a0522d; color: white; font-weight: bold; vertical-align: middle; text-align: center; border-bottom: 1px solid #777; padding: 2px;">${areaLabel}</td>`;
         }
 
-        rowHTML += `<td style="padding: 5px; font-weight: 500;">${metric}</td>`;
+        rowHTML += `<td style="padding: 2px; font-weight: 500;">${metric}</td>`;
 
         // Data Extraction Helper
         const val = (v) => (v != null && v !== '') ? v : '-';
@@ -9880,40 +9885,41 @@ function renderGMSection(table, areaLabel, deptKey, records, dateStr) {
         const d = record ? record.data : {};
 
         const safeFormat = (v) => DOM.formatNumber(v);
+        const cellStyle = 'padding: 2px; text-align: center;';
 
         // Daily Actual
-        rowHTML += `<td style="text-align: center;">${safeFormat(d.daily_actual)}</td>`;
+        rowHTML += `<td style="${cellStyle}">${safeFormat(d.daily_actual)}</td>`;
 
         // Extra Column (Day-2, Qty Avail, Grade-7, or Spacer)
         if (deptKey === "Milling_CIL") {
-            rowHTML += `<td style="text-align: center;">${safeFormat(d.day2)}</td>`;
+            rowHTML += `<td style="${cellStyle}">${safeFormat(d.day2)}</td>`;
         } else if (deptKey === "Engineering") {
-            rowHTML += `<td style="text-align: center;">${safeFormat(d.qty_available)}</td>`;
+            rowHTML += `<td style="${cellStyle}">${safeFormat(d.qty_available)}</td>`;
         } else if (deptKey === "Geology" && metric === "Toll") {
-            rowHTML += `<td style="text-align: center;">${val(d.grade_7)}</td>`;
+            rowHTML += `<td style="${cellStyle}">${val(d.grade_7)}</td>`;
         } else {
-            rowHTML += `<td></td>`;
+            rowHTML += `<td style="${cellStyle}"></td>`;
         }
 
-        rowHTML += `<td style="text-align: center;">${safeFormat(d.daily_forecast)}</td>`;
-        rowHTML += `<td style="text-align: center;">${val(d.var1)}</td>`; // Daily Var
-        rowHTML += `<td>${statusIcon(d.var1)}</td>`;
+        rowHTML += `<td style="${cellStyle}">${safeFormat(d.daily_forecast)}</td>`;
+        rowHTML += `<td style="${cellStyle}">${val(d.var1)}</td>`; // Daily Var
+        rowHTML += `<td style="padding: 2px;">${statusIcon(d.var1)}</td>`;
 
-        rowHTML += `<td style="text-align: center;">${safeFormat(d.mtd_actual)}</td>`;
-        rowHTML += `<td style="text-align: center;">${safeFormat(d.mtd_forecast)}</td>`;
-        rowHTML += `<td style="text-align: center;">${val(d.var2)}</td>`; // MTD Var
-        rowHTML += `<td>${statusIcon(d.var2)}</td>`;
+        rowHTML += `<td style="${cellStyle}">${safeFormat(d.mtd_actual)}</td>`;
+        rowHTML += `<td style="${cellStyle}">${safeFormat(d.mtd_forecast)}</td>`;
+        rowHTML += `<td style="${cellStyle}">${val(d.var2)}</td>`; // MTD Var
+        rowHTML += `<td style="padding: 2px;">${statusIcon(d.var2)}</td>`;
 
-        rowHTML += `<td style="text-align: center;">${safeFormat(d.outlook)}</td>`;
-        rowHTML += `<td style="text-align: center;">${safeFormat(d.full_forecast)}</td>`;
-        rowHTML += `<td style="text-align: center;">${safeFormat(d.full_budget)}</td>`;
-        rowHTML += `<td style="text-align: center;">${val(d.var3)}</td>`; // Budget Var
+        rowHTML += `<td style="${cellStyle}">${safeFormat(d.outlook)}</td>`;
+        rowHTML += `<td style="${cellStyle}">${safeFormat(d.full_forecast)}</td>`;
+        rowHTML += `<td style="${cellStyle}">${safeFormat(d.full_budget)}</td>`;
+        rowHTML += `<td style="${cellStyle}">${val(d.var3)}</td>`; // Budget Var
 
         // Status for Budget Var? Screenshot shows status col after last variance
-        rowHTML += `<td>${statusIcon(d.var3)}</td>`;
+        rowHTML += `<td style="padding: 2px;">${statusIcon(d.var3)}</td>`;
 
         // Sparkline Placeholder
-        rowHTML += `<td><canvas id="spark-${deptKey}-${index}" width="100" height="30"></canvas></td>`;
+        rowHTML += `<td><canvas id="spark-${deptKey}-${index}" width="70" height="20"></canvas></td>`;
 
         rowHTML += `</tr>`;
         thead.insertAdjacentHTML('beforeend', rowHTML);
