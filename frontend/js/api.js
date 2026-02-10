@@ -17,7 +17,7 @@ async function handleResponse(response) {
             try {
                 const text = await response.text();
                 if (text) errorMsg += ` - ${text.substring(0, 100)}`;
-            } catch (textErr) {}
+            } catch (textErr) { }
         }
         throw new Error(errorMsg);
     }
@@ -38,9 +38,9 @@ async function fetchKPIRecords(department, startDate, endDate) {
     const params = new URLSearchParams();
     if (startDate) params.append('start_date', startDate);
     if (endDate) params.append('end_date', endDate);
-    
+
     if (params.toString()) url += `?${params.toString()}`;
-    
+
     const response = await fetch(url);
     return handleResponse(response);
 }
@@ -65,7 +65,7 @@ async function deleteKPIRecord(recordId) {
 async function fetchPreviousMTD(department, metric, currentDate, subtype) {
     let url = `${API_BASE_URL}/kpi/${department}/previous-mtd?metric=${encodeURIComponent(metric)}&current_date=${currentDate}`;
     if (subtype) url += `&subtype=${encodeURIComponent(subtype)}`;
-    
+
     try {
         const response = await fetch(url);
         if (!response.ok) return 0; // Default to 0 if not found
@@ -80,4 +80,15 @@ async function fetchPreviousMTD(department, metric, currentDate, subtype) {
 async function fetchEmployees() {
     const response = await fetch(`${API_BASE_URL}/employees`);
     return handleResponse(response);
+}
+
+async function fetchSystemUser() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/system-user`);
+        if (!response.ok) return null;
+        return await response.json();
+    } catch (e) {
+        console.warn('Failed to fetch system user', e);
+        return null;
+    }
 }

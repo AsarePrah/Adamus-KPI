@@ -1,5 +1,5 @@
 from typing import Optional, List, Dict, Any
-from datetime import date as dt_date
+from datetime import date as dt_date, datetime
 from sqlmodel import Field, SQLModel, Relationship
 from sqlalchemy import JSON, Column
 
@@ -30,3 +30,9 @@ class KPIRecord(SQLModel, table=True):
     
     # Store flexible numeric data: daily_actual, daily_forecast, var1, mtd_actual, etc.
     data: Dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
+
+class ChatMessage(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    sender: str
+    message: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)

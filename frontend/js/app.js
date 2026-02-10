@@ -4,6 +4,7 @@
 // State
 const STATE = {
     currentUser: null,
+    systemUser: null,
     currentDept: "Milling_CIL",
     currentMetric: "Gold Contained"
 };
@@ -61,16 +62,29 @@ const DEPT_METRICS = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Initial fetch of system user
+    fetchSystemUser().then(u => {
+        if (u && u.username) {
+            STATE.systemUser = u.username;
+            // If app is already running, we might want to refresh?
+            // But usually initApp happens fast.
+            // If we are already logged in, re-render sidebar/header?
+            if (STATE.currentUser) {
+                renderSidebar();
+            }
+        }
+    });
+
     const storedUser = localStorage.getItem('kpi_current_user');
     if (storedUser) {
         try {
             STATE.currentUser = JSON.parse(storedUser);
             initApp();
         } catch (e) {
-            renderHomePage(); // Changed from renderLoginScreen
+            renderHomePage();
         }
     } else {
-        renderHomePage(); // Changed from renderLoginScreen
+        renderHomePage();
     }
 });
 
@@ -799,12 +813,17 @@ function logout() {
 
 function renderSidebar() {
     const nav = document.getElementById('sidebar');
-    const userDisplay = STATE.currentUser ? STATE.currentUser.username : 'User';
+    const userDisplay = STATE.systemUser || (STATE.currentUser ? STATE.currentUser.username : 'User');
+
+    const userRole = STATE.currentUser ? STATE.currentUser.role : 'User';
+    const canViewChat = ['Admin', 'GM', 'HOD'].includes(userRole);
 
     nav.innerHTML = `
-        <h2 style="margin-bottom: 20px; color: #fbbf24;">Adamus KPI</h2>
+        <h2 style="margin-bottom: 10px; color: #fbbf24;">Adamus KPI</h2>
+        
         <div style="margin-bottom:20px; padding:10px; background:var(--bg-secondary); border-radius:6px; font-size:14px;">
-            Logged in as: <strong>${userDisplay}</strong>
+            Logged in as: <strong>${userDisplay}</strong><br>
+            <span style="font-size:11px; opacity:0.7;">Role: ${userRole}</span>
             <div style="margin-top:5px; text-align:right;">
                 <a href="#" onclick="logout()" style="color:var(--danger); font-size:12px; text-decoration:none;">Logout</a>
             </div>
@@ -819,12 +838,103 @@ function renderSidebar() {
                     </a>
                 </li>
             `).join('')}
-        </ul>
+
+        ${canViewChat ? `
+        <!-- Sidebar Chat Widget -->
+        <div id="sidebar-chat" style="margin-top: 20px; margin-bottom: 20px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 5px;">
+             <div style="font-size: 12px; color: #fbbf24; font-weight: bold; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
+                 <span>Chat Room</span>
+                 <span id="clear-chat-btn" style="cursor: pointer; font-size: 10px; color: #ef4444; opacity: 0.8;" title="Clear Chat history" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">Clear</span>
+             </div>
+             <div id="sidebar-chat-messages" style="height: 100px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.3); padding: 5px; font-size: 11px; color: #e5e7eb; margin-bottom: 5px;"></div>
+             <div style="display: flex; gap: 5px;">
+                 <input type="text" id="sidebar-chat-input" placeholder="..." style="flex: 1; min-width: 0; padding: 4px; font-size: 11px; background: rgba(255,255,255,0.9); border: none; color: black; border-radius: 3px;">
+                 <button id="sidebar-chat-send" style="padding: 4px 8px; font-size: 11px; background: #fbbf24; border: none; border-radius: 3px; cursor: pointer; color: black; font-weight: bold;">></button>
+             </div>
+        </div>
+        ` : ''}
     `;
+
+    // Only init chat if allowed
+    if (canViewChat) {
+        // Initialize Sidebar Chat
+        const msgList = document.getElementById('sidebar-chat-messages');
+        const input = document.getElementById('sidebar-chat-input');
+        const btn = document.getElementById('sidebar-chat-send');
+        const clearBtn = document.getElementById('clear-chat-btn');
+
+        const loadSidebarChat = async () => {
+            try {
+                // Keep limit low for small widget
+                const response = await fetch(`${API_BASE_URL}/chat?limit=20`);
+                if (!response.ok) return;
+                const messages = await response.json();
+
+                msgList.innerHTML = '';
+                messages.forEach(msg => {
+                    const div = document.createElement('div');
+                    div.style.marginBottom = '4px';
+                    // Simple format: Name: Message
+                    div.innerHTML = `<strong style="color: #fbbf24;">${msg.sender}:</strong> ${msg.message}`;
+                    msgList.appendChild(div);
+                });
+                msgList.scrollTop = msgList.scrollHeight;
+            } catch (e) {
+                console.error("Sidebar chat error", e);
+            }
+        };
+
+        const sendSidebarMessage = async () => {
+            const text = input.value.trim();
+            if (!text) return;
+            const sender = STATE.systemUser || (STATE.currentUser ? STATE.currentUser.username : 'User');
+            try {
+                await fetch(`${API_BASE_URL}/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sender, message: text })
+                });
+                input.value = '';
+                loadSidebarChat();
+            } catch (e) { console.error(e); }
+        };
+
+        // Clear Chat Logic
+        clearBtn.onclick = async () => {
+            if (!confirm("Are you sure you want to clear the chat history?")) return;
+            try {
+                const res = await fetch(`${API_BASE_URL}/chat`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadSidebarChat();
+                } else {
+                    alert("Failed to clear chat");
+                }
+            } catch (e) { console.error(e); }
+        };
+
+
+        btn.onclick = sendSidebarMessage;
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendSidebarMessage();
+        });
+
+        // Handle Interval (Global)
+        if (STATE.sidebarChatInterval) clearInterval(STATE.sidebarChatInterval);
+        loadSidebarChat();
+        STATE.sidebarChatInterval = setInterval(loadSidebarChat, 5000); // Poll every 5s
+    } else {
+        // Ensure interval is cleared if permission removed (e.g. logout/re-login scenarios if SPA)
+        if (STATE.sidebarChatInterval) clearInterval(STATE.sidebarChatInterval);
+    }
+
 }
 
 // Make loadDepartmentView global so HTML onclick can find it
 window.loadDepartmentView = async function (dept) {
+    if (STATE.intervals) {
+        STATE.intervals.forEach(i => clearInterval(i));
+        STATE.intervals = [];
+    }
     STATE.currentDept = dept;
     const content = document.getElementById('content');
 
@@ -841,7 +951,23 @@ window.loadDepartmentView = async function (dept) {
         STATE.currentMetric = availableMetrics[0];
     }
 
+    const userDisplay = STATE.systemUser || (STATE.currentUser ? STATE.currentUser.username : 'User');
+    // Initials logic: take first letter of each word if space exists, else first 2 chars
+    const getInitials = (name) => {
+        const parts = name.trim().split(' ');
+        if (parts.length > 1) return (parts[0][0] + parts[1][0]).toUpperCase();
+        return name.slice(0, 2).toUpperCase();
+    };
+    const userInitials = getInitials(userDisplay);
+
     content.innerHTML = `
+        <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 15px;">
+            <span style="font-size: 14px; font-weight: 600; color: #374151; margin-right: 10px;">${userDisplay}</span>
+            <div style="width: 36px; height: 36px; background-color: #a0522d; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold;">
+                ${userInitials}
+            </div>
+        </div>
+        
         <h2 style="margin-bottom: 20px;">${dept.replace('_', ' ')} Dashboard</h2>
         
         <!-- Submenu Navigation -->
@@ -9671,6 +9797,14 @@ function renderGMReport(card) {
     controls.appendChild(title);
 
     // PDF Export Link
+    // Right Group (PDF + User Info)
+    const rightGroup = document.createElement('div');
+    rightGroup.style.display = 'flex';
+    rightGroup.style.alignItems = 'center';
+    rightGroup.style.gap = '20px';
+    rightGroup.style.zIndex = '10';
+
+    // PDF Export Link
     const pdfLink = document.createElement('a');
     pdfLink.textContent = "PDF";
     pdfLink.href = "#";
@@ -9681,17 +9815,15 @@ function renderGMReport(card) {
     pdfLink.style.border = '1px solid #fbbf24';
     pdfLink.style.padding = '5px 10px';
     pdfLink.style.borderRadius = '4px';
-    pdfLink.style.position = 'absolute'; // Position absolute
-    pdfLink.style.right = '20px'; // Right padding
-    pdfLink.style.top = '50%'; // Vertically centered
-    pdfLink.style.transform = 'translateY(-50%)'; // Vertically centered
-    pdfLink.style.zIndex = '10'; // Above other elements
+    pdfLink.style.cursor = 'pointer';
 
     pdfLink.onclick = (e) => {
         e.preventDefault();
 
         // Hide PDF link during generation
         pdfLink.style.display = 'none';
+        // Also hide User Info for PDF? Maybe keeps it clean.
+        userDiv.style.display = 'none';
 
         const opt = {
             margin: 0.2,
@@ -9705,17 +9837,56 @@ function renderGMReport(card) {
         if (typeof html2pdf !== 'undefined') {
             html2pdf().set(opt).from(card).save().then(() => {
                 pdfLink.style.display = 'block'; // Show again
+                userDiv.style.display = 'flex';
             }).catch(err => {
                 console.error(err);
                 pdfLink.style.display = 'block';
+                userDiv.style.display = 'flex';
                 alert("Error generating PDF. Please ensure html2pdf is loaded.");
             });
         } else {
             alert("PDF Generation library not loaded.");
             pdfLink.style.display = 'block';
+            userDiv.style.display = 'flex';
         }
     };
-    controls.appendChild(pdfLink);
+
+    // User Info
+    const userDisplay = STATE.systemUser || (STATE.currentUser ? STATE.currentUser.username : 'User');
+    const parts = userDisplay.trim().split(' ');
+    const initials = (parts.length > 1 ? parts[0][0] + parts[1][0] : userDisplay.slice(0, 2)).toUpperCase();
+
+    const userDiv = document.createElement('div');
+    userDiv.style.display = 'flex';
+    userDiv.style.alignItems = 'center';
+    userDiv.style.gap = '10px';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = userDisplay;
+    nameSpan.style.fontSize = '14px';
+    nameSpan.style.fontWeight = 'bold';
+    nameSpan.style.color = '#fff';
+
+    const circle = document.createElement('div');
+    circle.textContent = initials;
+    circle.style.width = '32px';
+    circle.style.height = '32px';
+    circle.style.backgroundColor = '#fbbf24'; // Gold circle
+    circle.style.color = '#000'; // Black text
+    circle.style.borderRadius = '50%';
+    circle.style.display = 'flex';
+    circle.style.alignItems = 'center';
+    circle.style.justifyContent = 'center';
+    circle.style.fontWeight = 'bold';
+    circle.style.fontSize = '12px';
+
+    userDiv.appendChild(nameSpan);
+    userDiv.appendChild(circle);
+
+    rightGroup.appendChild(pdfLink);
+    rightGroup.appendChild(userDiv);
+
+    controls.appendChild(rightGroup);
 
     card.appendChild(controls);
 
@@ -9726,6 +9897,8 @@ function renderGMReport(card) {
     reportTable.style.fontSize = '11px';
 
     card.appendChild(reportTable);
+
+    // Load Data Function
 
     // Load Data Function
     const loadReport = async () => {

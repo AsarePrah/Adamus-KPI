@@ -7,15 +7,24 @@ import os
 
 # Relative imports from within the backend package
 from .database import create_db_and_tables, get_session
-from .models import Employee, LeaveRequest, KPIRecord
+from .models import Employee, LeaveRequest, KPIRecord, ChatMessage
 
 app = FastAPI()
+
+import getpass
 
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
 
 # API Endpoints
+@app.get("/api/system-user")
+def get_system_user():
+    try:
+        return {"username": getpass.getuser()}
+    except Exception as e:
+        return {"username": "User", "error": str(e)}
+
 @app.post("/api/login")
 def login(data: Dict[str, Any]):
     # Mock login logic
@@ -124,6 +133,29 @@ def delete_kpi_record(record_id: int, session: Session = Depends(get_session)):
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
     session.delete(record)
+    session.commit()
+    return {"ok": True}
+
+# CHAT ENDPOINTS
+@app.get("/api/chat", response_model=List[ChatMessage])
+def get_chat_messages(limit: int = 50, session: Session = Depends(get_session)):
+    # Get latest messages
+    messages = session.exec(select(ChatMessage).order_by(ChatMessage.timestamp.desc()).limit(limit)).all()
+    # Return reversed so they appear chronologically
+    return list(reversed(messages))
+
+@app.post("/api/chat", response_model=ChatMessage)
+def post_chat_message(message: ChatMessage, session: Session = Depends(get_session)):
+    session.add(message)
+    session.commit()
+    session.refresh(message)
+    return message
+
+@app.delete("/api/chat")
+def clear_chat_messages(session: Session = Depends(get_session)):
+    from sqlmodel import delete
+    statement = delete(ChatMessage)
+    session.exec(statement)
     session.commit()
     return {"ok": True}
 
