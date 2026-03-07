@@ -178,5 +178,114 @@ const DOM = {
                 if (overlay.parentNode) document.body.removeChild(overlay);
             }, 200);
         };
+    },
+
+    showAlert: (title, message, type = 'success') => {
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100vw';
+        overlay.style.height = '100vh';
+        overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.4)';
+        overlay.style.backdropFilter = 'blur(4px)';
+        overlay.style.display = 'flex';
+        overlay.style.justifyContent = 'center';
+        overlay.style.alignItems = 'center';
+        overlay.style.zIndex = '10000';
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 0.25s ease';
+
+        const modal = document.createElement('div');
+        modal.style.backgroundColor = '#fff';
+        modal.style.borderRadius = '20px';
+        modal.style.padding = '40px 30px';
+        modal.style.width = '90%';
+        modal.style.maxWidth = '360px';
+        modal.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.15)';
+        modal.style.transform = 'scale(0.9) translateY(20px)';
+        modal.style.transition = 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+        modal.style.textAlign = 'center';
+
+        const iconContainer = document.createElement('div');
+        iconContainer.style.width = '72px';
+        iconContainer.style.height = '72px';
+        iconContainer.style.borderRadius = '50%';
+        iconContainer.style.display = 'flex';
+        iconContainer.style.alignItems = 'center';
+        iconContainer.style.justifyContent = 'center';
+        iconContainer.style.margin = '0 auto 24px auto';
+
+        let iconHtml = '';
+        if (type === 'success') {
+            iconContainer.style.backgroundColor = '#d1fae5';
+            iconHtml = '<i class="fa-solid fa-check" style="font-size: 32px; color: #059669;"></i>';
+        } else if (type === 'error') {
+            iconContainer.style.backgroundColor = '#fee2e2';
+            iconHtml = '<i class="fa-solid fa-xmark" style="font-size: 32px; color: #dc2626;"></i>';
+        } else {
+            iconContainer.style.backgroundColor = '#e0e7ff';
+            iconHtml = '<i class="fa-solid fa-bell" style="font-size: 32px; color: #4f46e5;"></i>';
+        }
+        iconContainer.innerHTML = iconHtml;
+        modal.appendChild(iconContainer);
+
+        const titleEl = document.createElement('h3');
+        titleEl.textContent = title;
+        titleEl.style.margin = '0 0 12px 0';
+        titleEl.style.color = '#111827';
+        titleEl.style.fontSize = '24px';
+        titleEl.style.fontWeight = '800';
+        modal.appendChild(titleEl);
+
+        const messageEl = document.createElement('p');
+        messageEl.textContent = message;
+        messageEl.style.margin = '0 0 32px 0';
+        messageEl.style.color = '#4b5563';
+        messageEl.style.fontSize = '16px';
+        messageEl.style.lineHeight = '1.5';
+        modal.appendChild(messageEl);
+
+        const btnContainer = document.createElement('div');
+        btnContainer.style.display = 'flex';
+        btnContainer.style.justifyContent = 'center';
+
+        const okBtn = DOM.createButton('Awesome!', () => closeModal());
+        okBtn.style.padding = '12px 36px';
+        okBtn.style.borderRadius = '50px';
+        okBtn.style.fontSize = '16px';
+        okBtn.style.fontWeight = '700';
+        okBtn.style.backgroundColor = type === 'success' ? '#10b981' : '#4f46e5';
+        okBtn.style.color = '#fff';
+        okBtn.style.border = 'none';
+        okBtn.style.boxShadow = '0 4px 12px ' + (type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(79, 70, 229, 0.3)');
+        okBtn.style.transition = 'transform 0.1s, box-shadow 0.1s';
+
+        okBtn.onmouseover = () => {
+            okBtn.style.transform = 'translateY(-2px)';
+            okBtn.style.boxShadow = '0 6px 16px ' + (type === 'success' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(79, 70, 229, 0.4)');
+        };
+        okBtn.onmouseout = () => {
+            okBtn.style.transform = 'none';
+            okBtn.style.boxShadow = '0 4px 12px ' + (type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(79, 70, 229, 0.3)');
+        };
+
+        btnContainer.appendChild(okBtn);
+        modal.appendChild(btnContainer);
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+
+        requestAnimationFrame(() => {
+            overlay.style.opacity = '1';
+            modal.style.transform = 'scale(1) translateY(0)';
+        });
+
+        const closeModal = () => {
+            overlay.style.opacity = '0';
+            modal.style.transform = 'scale(0.9) translateY(20px)';
+            setTimeout(() => {
+                if (overlay.parentNode) document.body.removeChild(overlay);
+            }, 300);
+        };
     }
 };

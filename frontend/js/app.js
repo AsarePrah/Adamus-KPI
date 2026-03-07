@@ -4845,16 +4845,8 @@ function renderOHSSafetyIncidentsForm(dept, metricName, card) {
     const dVar = DOM.createInputGroup("Var %", `input-${dept}-daily-var`, "text");
     dVar.input.readOnly = true;
 
-    // Custom logic: If Actual > 0 -> -100%, if Actual == 0 -> 0%
     const updateSafetyVariance = () => {
-        const val = parseFloat(dAct.input.value);
-        if (isNaN(val)) {
-            dVar.input.value = '';
-        } else if (val === 0) {
-            dVar.input.value = '0%';
-        } else if (val > 0) {
-            dVar.input.value = '-100%';
-        }
+        dVar.input.value = calculateVariance(dAct.input.value, dFcst.input.value);
     };
     dAct.input.addEventListener('input', updateSafetyVariance);
     // attachVarianceListener(dAct.input, dFcst.input, dVar.input);
@@ -5048,7 +5040,7 @@ function renderOHSSafetyIncidentsForm(dept, metricName, card) {
 
         try {
             await saveKPIRecord(dept, record);
-            DOM.showToast("Record saved successfully");
+            DOM.showAlert("Success!", `Awesome! ${metricName} Incident has been logged! 🛡️`, "success");
             loadRecentRecords(dept);
 
             // Clear inputs (except KPI)
@@ -5102,20 +5094,11 @@ function renderOHSEnvironmentalIncidentsForm(dept, metricName, card) {
 
     const dVar = DOM.createInputGroup("Var %", `input-${dept}-daily-var`, "text");
     dVar.input.readOnly = true;
-
-    // Custom logic: If Actual > 0 -> -100%, if Actual == 0 -> 0%
-    const updateEnvVariance = (actInput, varInput) => {
-        const val = parseFloat(actInput.value);
-        if (isNaN(val)) {
-            varInput.value = '';
-        } else if (val === 0) {
-            varInput.value = '0%';
-        } else if (val > 0) {
-            varInput.value = '-100%';
-        }
+    const updateEnvVariance = (actInput, fcstInput, varInput) => {
+        varInput.value = calculateVariance(actInput.value, fcstInput.value);
     };
 
-    dAct.input.addEventListener('input', () => updateEnvVariance(dAct.input, dVar.input));
+    dAct.input.addEventListener('input', () => updateEnvVariance(dAct.input, dFcst.input, dVar.input));
     // attachVarianceListener(dAct.input, dFcst.input, dVar.input);
 
     // Row 3
@@ -5124,7 +5107,7 @@ function renderOHSEnvironmentalIncidentsForm(dept, metricName, card) {
     const mVar = DOM.createInputGroup("Var %", `input-${dept}-mtd-var`, "text");
     mVar.input.readOnly = true;
 
-    mAct.input.addEventListener('input', () => updateEnvVariance(mAct.input, mVar.input));
+    mAct.input.addEventListener('input', () => updateEnvVariance(mAct.input, mFcst.input, mVar.input));
     // attachVarianceListener(mAct.input, mFcst.input, mVar.input);
 
     // Row 4
@@ -5139,7 +5122,7 @@ function renderOHSEnvironmentalIncidentsForm(dept, metricName, card) {
     budgVar.input.readOnly = true;
 
     // Custom logic for Outlook Variance (Env Incidents): 0 -> 0%, >0 -> -100%
-    outlook.input.addEventListener('input', () => updateEnvVariance(outlook.input, budgVar.input));
+    outlook.input.addEventListener('input', () => updateEnvVariance(outlook.input, fullBudg.input, budgVar.input));
     // attachVarianceListener(outlook.input, fullBudg.input, budgVar.input);
 
     // Add to Grid
@@ -5286,9 +5269,8 @@ function renderOHSEnvironmentalIncidentsForm(dept, metricName, card) {
             metric_name: kpi.input.value,
             data: payload
         };
-
         await saveKPIRecord(dept, record);
-        alert("Environmental Incident Saved!");
+        DOM.showAlert("Success!", "Environmental Incident has been successfully logged! 🌱", "success");
         loadRecentRecords(dept);
 
         // Clear Inputs
@@ -5333,19 +5315,11 @@ function renderOHSPropertyDamageForm(dept, metricName, card) {
     const dVar = DOM.createInputGroup("Var %", `input-${dept}-daily-var`, "text");
     dVar.input.readOnly = true;
 
-    // Custom logic: If Actual > 0 -> -100%, if Actual == 0 -> 0%
-    const updatePropDamVariance = (actInput, varInput) => {
-        const val = parseFloat(actInput.value);
-        if (isNaN(val)) {
-            varInput.value = '';
-        } else if (val === 0) {
-            varInput.value = '0%';
-        } else if (val > 0) {
-            varInput.value = '-100%';
-        }
+    const updatePropDamVariance = (actInput, fcstInput, varInput) => {
+        varInput.value = calculateVariance(actInput.value, fcstInput.value);
     };
 
-    dAct.input.addEventListener('input', () => updatePropDamVariance(dAct.input, dVar.input));
+    dAct.input.addEventListener('input', () => updatePropDamVariance(dAct.input, dFcst.input, dVar.input));
     // attachVarianceListener(dAct.input, dFcst.input, dVar.input);
 
     // Row 3
@@ -5356,16 +5330,7 @@ function renderOHSPropertyDamageForm(dept, metricName, card) {
 
     // Logic: ((MTD Forecast - MTD Actual) / MTD Actual) * 100
     const updatePropDamMTDVariance = () => {
-        const actual = parseFloat(mAct.input.value);
-        const forecast = parseFloat(mFcst.input.value);
-
-        if (isNaN(actual) || isNaN(forecast) || actual === 0) {
-            mVar.input.value = ''; // Avoid div by zero or empty
-            return;
-        }
-
-        const variance = ((forecast - actual) / actual) * 100;
-        mVar.input.value = Math.round(variance) + '%';
+        mVar.input.value = calculateVariance(mAct.input.value, mFcst.input.value);
     };
 
     mAct.input.addEventListener('input', updatePropDamMTDVariance);
@@ -5383,18 +5348,8 @@ function renderOHSPropertyDamageForm(dept, metricName, card) {
     const budgVar = DOM.createInputGroup("Var %", `input-${dept}-budg-var`, "text");
     budgVar.input.readOnly = true;
 
-    // Custom Logic: ((Full Forecast (b) - Outlook (a)) / Outlook (a)) * 100
     const updatePropDamOutlookVariance = () => {
-        const out = parseFloat(outlook.input.value);
-        const fcst = parseFloat(fullFcst.input.value);
-
-        if (isNaN(out) || isNaN(fcst) || out === 0) {
-            budgVar.input.value = '';
-            return;
-        }
-
-        const variance = ((fcst - out) / out) * 100;
-        budgVar.input.value = Math.round(variance) + '%';
+        budgVar.input.value = calculateVariance(outlook.input.value, fullBudg.input.value);
     };
 
     outlook.input.addEventListener('input', updatePropDamOutlookVariance);
@@ -5539,7 +5494,7 @@ function renderOHSPropertyDamageForm(dept, metricName, card) {
 
         try {
             await saveKPIRecord(dept, record);
-            alert("Property Damage Record Saved!");
+            DOM.showAlert("Success!", "Property Damage Record has been successfully logged! 🚧", "success");
             loadRecentRecords(dept);
 
             // Clear / Reset Inputs
@@ -10143,8 +10098,17 @@ function renderGMSection(table, areaLabel, deptKey, records, dateStr) {
             if (act == null || fcst == null || act === '' || fcst === '') return null;
             const a = parseFloat(String(act).replace(/,/g, ''));
             const f = parseFloat(String(fcst).replace(/,/g, ''));
-            if (isNaN(a) || isNaN(f) || f === 0) return null;
-            return ((a - f) / f * 100).toFixed(0) + '%';
+            if (isNaN(a) || isNaN(f)) return null;
+
+            let v = 0;
+            if (f === 0) {
+                if (a === 0) v = 0;
+                else v = -100;
+            } else {
+                v = ((f - a) / f) * 100;
+            }
+            if (v < -100) v = -100;
+            return v.toFixed(0) + '%';
         };
 
         // Ensure variances exist
