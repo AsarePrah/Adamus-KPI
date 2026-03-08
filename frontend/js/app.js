@@ -3550,6 +3550,7 @@ function renderMillingGoldContainedForm(dept, metricName, card) {
     // Logic Variables
     let priorMtdAct = 0;
     let priorMtdFcst = 0;
+    let fixedTargetDays = null;
 
     const updateCalculations = () => {
         const curDAct = parseFloat(dAct.input.value) || 0;
@@ -3557,18 +3558,19 @@ function renderMillingGoldContainedForm(dept, metricName, card) {
 
         // MTD Actual = History Sum + Current Daily
         const currentMtdAct = priorMtdAct + curDAct;
-        mAct.input.value = currentMtdAct.toFixed(0);
+        mAct.input.value = Math.round(currentMtdAct * 100) / 100;
         mAct.input.dispatchEvent(new Event('input', { bubbles: true }));
 
         // MTD Forecast = History Sum + Current Forecast
-        mFcst.input.value = (priorMtdFcst + curDFcst).toFixed(0);
+        mFcst.input.value = Math.round((priorMtdFcst + curDFcst) * 100) / 100;
         mFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
 
         // Outlook Logic
         const dateVal = date.input.value;
         if (dateVal) {
             const d = new Date(dateVal);
-            const totalDays = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+            const calendarDays = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+            const totalDays = fixedTargetDays !== null ? fixedTargetDays : calendarDays;
             const currentDay = d.getDate();
 
             if (currentDay > 0) {
@@ -3577,7 +3579,7 @@ function renderMillingGoldContainedForm(dept, metricName, card) {
                 const adjustment = ratio * currentMtdAct;
                 const finalVal = adjustment + currentMtdAct;
 
-                outlook.input.value = finalVal.toFixed(0);
+                outlook.input.value = Math.round(finalVal * 100) / 100;
                 outlook.input.dispatchEvent(new Event('input', { bubbles: true }));
             }
         }
@@ -3617,11 +3619,14 @@ function renderMillingGoldContainedForm(dept, metricName, card) {
             );
 
             if (fixedRecord && fixedRecord.data) {
-                // fullFcst.input.value = fixedRecord.data.full_forecast || ''; // User requested manual input for Full Forecast
+                fullFcst.input.value = fixedRecord.data.full_forecast || '';
                 fullBudg.input.value = fixedRecord.data.full_budget || '';
+                fixedTargetDays = parseFloat(fixedRecord.data.num_days) || null;
                 // Trigger events
-                // fullFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
+                fullFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
                 fullBudg.input.dispatchEvent(new Event('input', { bubbles: true }));
+            } else {
+                fixedTargetDays = null;
             }
 
             // 3. Calculate Day-2 Value
@@ -3778,6 +3783,7 @@ function renderMillingGoldRecoveryForm(dept, metricName, card) {
     // Logic State
     let priorMtdAct = 0;
     let priorMtdFcst = 0;
+    let fixedTargetDays = null;
 
     const updateCalculations = () => {
         const curDAct = parseFloat(dAct.input.value) || 0;
@@ -3786,11 +3792,11 @@ function renderMillingGoldRecoveryForm(dept, metricName, card) {
         // Logic: Prior Month Sum + Current Daily
         // Only if we found records. If not (priorMtdAct is 0), it just equals Daily Actual (plus 0).
         const finalMtd = priorMtdAct + curDAct;
-        mAct.input.value = finalMtd.toFixed(0);
+        mAct.input.value = Math.round(finalMtd * 100) / 100;
         mAct.input.dispatchEvent(new Event('input', { bubbles: true }));
 
         const finalMtdFcst = priorMtdFcst + curDFcst;
-        mFcst.input.value = finalMtdFcst.toFixed(0);
+        mFcst.input.value = Math.round(finalMtdFcst * 100) / 100;
         mFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
 
         // Outlook Logic
@@ -3798,7 +3804,8 @@ function renderMillingGoldRecoveryForm(dept, metricName, card) {
         const dateVal = date.input.value;
         if (dateVal) {
             const d = new Date(dateVal);
-            const totalDays = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+            const calendarDays = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+            const totalDays = fixedTargetDays !== null ? fixedTargetDays : calendarDays;
             const currentDay = d.getDate();
 
             if (currentDay > 0) {
@@ -3808,7 +3815,7 @@ function renderMillingGoldRecoveryForm(dept, metricName, card) {
                 const finalVal = adjustment + finalMtd;
 
                 currentOutlook = finalVal;
-                outlook.input.value = finalVal.toFixed(0);
+                outlook.input.value = Math.round(finalVal * 100) / 100;
                 outlook.input.dispatchEvent(new Event('input', { bubbles: true }));
             }
         }
@@ -3857,8 +3864,13 @@ function renderMillingGoldRecoveryForm(dept, metricName, card) {
             );
 
             if (fixedRecord && fixedRecord.data) {
+                fullFcst.input.value = fixedRecord.data.full_forecast || '';
                 fullBudg.input.value = fixedRecord.data.full_budget || '';
+                fixedTargetDays = parseFloat(fixedRecord.data.num_days) || null;
+                fullFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
                 fullBudg.input.dispatchEvent(new Event('input', { bubbles: true }));
+            } else {
+                fixedTargetDays = null;
             }
 
             // 3. Calculate Day-2 Value
@@ -3986,15 +3998,15 @@ function renderMillingRecoveryForm(dept, metricName, card) {
     date.input.value = '';
 
     // Row 2
-    const dAct = DOM.createInputGroup("Daily Actual", `input-${dept}-daily-act`, "number");
-    const dFcst = DOM.createInputGroup("Daily Forecast", `input-${dept}-daily-fcst`, "number");
+    const dAct = DOM.createInputGroup("Daily Actual", `input-${dept}-daily-act`, "text");
+    const dFcst = DOM.createInputGroup("Daily Forecast", `input-${dept}-daily-fcst`, "text");
     const dVar = DOM.createInputGroup("Var %", `input-${dept}-daily-var`, "text");
     dVar.input.readOnly = true;
     attachVarianceListener(dAct.input, dFcst.input, dVar.input);
 
     // Row 3
-    const mAct = DOM.createInputGroup("MTD Actual", `input-${dept}-mtd-act`, "number");
-    const mFcst = DOM.createInputGroup("MTD Forecast", `input-${dept}-mtd-fcst`, "number");
+    const mAct = DOM.createInputGroup("MTD Actual", `input-${dept}-mtd-act`, "text");
+    const mFcst = DOM.createInputGroup("MTD Forecast", `input-${dept}-mtd-fcst`, "text");
     const mVar = DOM.createInputGroup("Var %", `input-${dept}-mtd-var`, "text");
     mVar.input.readOnly = true;
     attachVarianceListener(mAct.input, mFcst.input, mVar.input);
@@ -4018,14 +4030,7 @@ function renderMillingRecoveryForm(dept, metricName, card) {
     add(outlook); add(fullFcst); add(fullBudg);
     add(budgVar); add(day2);
 
-    // Logic: Calculate Outlook from Gold Recovery & Gold Contained
-    // Also mirror Daily Forecast to MTD Forecast
-
-    // Listener for Daily Forecast mirroring
-    dFcst.input.addEventListener('input', () => {
-        mFcst.input.value = dFcst.input.value;
-        mFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
-    });
+    // Listener for Daily Forecast removed: MTD Forecast is derived from Gold Recovery and Gold Contained MTD Forecasts.
 
     const handleDateChange = async () => {
         const dateVal = date.input.value;
@@ -4079,33 +4084,38 @@ function renderMillingRecoveryForm(dept, metricName, card) {
             console.log("Outlook Calc Debug:", { dateVal, grRecord, gcRecord });
 
             if (grRecord && gcRecord && grRecord.data && gcRecord.data) {
-                const grMtd = parseFloat(grRecord.data.mtd_actual) || 0;
-                const gcMtd = parseFloat(gcRecord.data.mtd_actual) || 0;
+                const grMtdAct = parseFloat(grRecord.data.mtd_actual) || 0;
+                const gcMtdAct = parseFloat(gcRecord.data.mtd_actual) || 0;
+                const grMtdFcst = parseFloat(grRecord.data.mtd_forecast) || 0;
+                const gcMtdFcst = parseFloat(gcRecord.data.mtd_forecast) || 0;
 
-                if (gcMtd !== 0) {
-                    // (Gold Recovery / Gold Contained) * 100
-                    const result = (grMtd / gcMtd) * 100;
-                    const formattedResult = result.toFixed(2);
-
-                    outlook.input.value = formattedResult + '%';
-                    // Mirror to MTD Actual (numeric value for input type="number" if strict, but let's check input type)
-                    // mAct is initialized as "number". So we should pass the raw number.
-                    // But Recovery is usually displayed as %. 
-                    // If input type is number, it won't take "95.42%".
-                    // If we derived it, we should probably set the numeric value.
-
-                    mAct.input.value = formattedResult; // input type="number" from definition
-
-                    // Trigger change for listeners
+                // MTD Actual & Outlook
+                if (gcMtdAct !== 0) {
+                    const resultAct = (grMtdAct / gcMtdAct) * 100;
+                    const formattedAct = resultAct.toFixed(2) + '%';
+                    outlook.input.value = formattedAct;
+                    mAct.input.value = formattedAct;
                     outlook.input.dispatchEvent(new Event('input', { bubbles: true }));
                     mAct.input.dispatchEvent(new Event('input', { bubbles: true }));
                 } else {
                     outlook.input.value = '';
                     mAct.input.value = '';
                 }
+
+                // MTD Forecast
+                if (gcMtdFcst !== 0) {
+                    const resultFcst = (grMtdFcst / gcMtdFcst) * 100;
+                    const formattedFcst = resultFcst.toFixed(2) + '%';
+                    mFcst.input.value = formattedFcst;
+                    mFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
+                } else {
+                    mFcst.input.value = '';
+                }
+
             } else {
                 outlook.input.value = '';
                 mAct.input.value = '';
+                mFcst.input.value = '';
             }
 
             // 3. Calculate Day-2 Value (Metric: Recovery)
