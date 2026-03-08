@@ -4838,16 +4838,24 @@ function renderOHSSafetyIncidentsForm(dept, metricName, card) {
     // User requested editable and specific logic: 0 -> 0%, >0 -> -100%
 
     const updateSafetyOutlookVar = () => {
-        const val = parseFloat(outlook.input.value);
-        if (isNaN(val)) {
+        const outVal = parseFloat(outlook.input.value);
+        const fcstVal = parseFloat(fullFcst.input.value);
+        if (isNaN(outVal) || isNaN(fcstVal)) {
             budgVar.input.value = '';
-        } else if (val === 0) {
-            budgVar.input.value = '0%';
-        } else if (val > 0) {
-            budgVar.input.value = '-100%';
+            return;
         }
+        let variance = 0;
+        if (fcstVal === 0) {
+            variance = outVal === 0 ? 0 : (outVal > 0 ? 100 : -100);
+        } else {
+            variance = ((outVal - fcstVal) / fcstVal) * 100;
+        }
+        if (variance > 100) variance = 100;
+        if (variance < -100) variance = -100;
+        budgVar.input.value = Math.round(variance) + '%';
     };
     outlook.input.addEventListener('input', updateSafetyOutlookVar);
+    fullFcst.input.addEventListener('input', updateSafetyOutlookVar);
     // attachVarianceListener(outlook.input, fullBudg.input, budgVar.input);
 
     // Add to Grid
@@ -5086,8 +5094,25 @@ function renderOHSEnvironmentalIncidentsForm(dept, metricName, card) {
     const budgVar = DOM.createInputGroup("Var %", `input-${dept}-budg-var`, "text");
     budgVar.input.readOnly = true;
 
-    // Custom logic for Outlook Variance (Env Incidents): 0 -> 0%, >0 -> -100%
-    outlook.input.addEventListener('input', () => updateEnvVariance(outlook.input, fullBudg.input, budgVar.input));
+    const updateEnvOutlookVar = () => {
+        const outVal = parseFloat(outlook.input.value);
+        const fcstVal = parseFloat(fullFcst.input.value);
+        if (isNaN(outVal) || isNaN(fcstVal)) {
+            budgVar.input.value = '';
+            return;
+        }
+        let variance = 0;
+        if (fcstVal === 0) {
+            variance = outVal === 0 ? 0 : (outVal > 0 ? 100 : -100);
+        } else {
+            variance = ((outVal - fcstVal) / fcstVal) * 100;
+        }
+        if (variance > 100) variance = 100;
+        if (variance < -100) variance = -100;
+        budgVar.input.value = Math.round(variance) + '%';
+    };
+    outlook.input.addEventListener('input', updateEnvOutlookVar);
+    fullFcst.input.addEventListener('input', updateEnvOutlookVar);
     // attachVarianceListener(outlook.input, fullBudg.input, budgVar.input);
 
     // Add to Grid
@@ -5314,7 +5339,21 @@ function renderOHSPropertyDamageForm(dept, metricName, card) {
     budgVar.input.readOnly = true;
 
     const updatePropDamOutlookVariance = () => {
-        budgVar.input.value = calculateVariance(outlook.input.value, fullBudg.input.value, true);
+        const outVal = parseFloat(outlook.input.value);
+        const fcstVal = parseFloat(fullFcst.input.value);
+        if (isNaN(outVal) || isNaN(fcstVal)) {
+            budgVar.input.value = '';
+            return;
+        }
+        let variance = 0;
+        if (fcstVal === 0) {
+            variance = outVal === 0 ? 0 : (outVal > 0 ? 100 : -100);
+        } else {
+            variance = ((outVal - fcstVal) / fcstVal) * 100;
+        }
+        if (variance > 100) variance = 100;
+        if (variance < -100) variance = -100;
+        budgVar.input.value = Math.round(variance) + '%';
     };
 
     outlook.input.addEventListener('input', updatePropDamOutlookVariance);
