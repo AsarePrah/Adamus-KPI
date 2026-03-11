@@ -3202,10 +3202,8 @@ function renderCrushingGradeForm(dept, metricName, card) {
             mAct.input.value = totalMTDAct.toFixed(2);
             mAct.input.dispatchEvent(new Event('input', { bubbles: true }));
 
-            // MTD Forecast Calculation - Re-enabled
-            const prevFcstSum = relevantRecords.reduce((sum, r) => sum + (parseFloat(r.data.daily_forecast) || 0), 0);
-            const totalMTDFcst = prevFcstSum + currentDailyFcst;
-            mFcst.input.value = totalMTDFcst.toFixed(2);
+            // MTD Forecast Calculation - For Grade, MTD Forecast matches Daily Forecast
+            mFcst.input.value = currentDailyFcst || '';
             mFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
 
         } catch (e) {
