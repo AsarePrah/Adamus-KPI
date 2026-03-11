@@ -10416,7 +10416,11 @@ function renderGMSection(table, areaLabel, deptKey, records, dateStr) {
         const cellStyle = 'padding: 2px; text-align: center;';
 
         // Daily Actual
-        rowHTML += `<td style="${cellStyle}">${safeFormat(d.daily_actual)}</td>`;
+        if (deptKey === "Mining" && metric === "Grade - Ore Mined") {
+            rowHTML += `<td style="${cellStyle}">${safeFormat(d.daily_act_grade)}</td>`;
+        } else {
+            rowHTML += `<td style="${cellStyle}">${safeFormat(d.daily_actual)}</td>`;
+        }
 
         // Extra Column (Day-2, Qty Avail, Grade-7, or Spacer)
         if (deptKey === "Milling_CIL") {
