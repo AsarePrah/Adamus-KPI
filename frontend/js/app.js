@@ -3146,8 +3146,13 @@ function renderCrushingGradeForm(dept, metricName, card) {
     };
     date.input.addEventListener('change', fetchFixedInputs);
 
+    // Auto-Populate MTD Forecast from Daily Forecast
+    dFcst.input.addEventListener('input', () => {
+        mFcst.input.value = dFcst.input.value;
+        mFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
     // Auto-Calculate MTD Actual (Sum of previous records in month + current daily actual)
-    // AND MTD Forecast (Sum of previous records in month + current daily forecast)
     const calculateMTD = async () => {
         const dateVal = date.input.value;
         const currentDailyAct = parseFloat(dAct.input.value) || 0;
@@ -3202,10 +3207,6 @@ function renderCrushingGradeForm(dept, metricName, card) {
             mAct.input.value = totalMTDAct.toFixed(2);
             mAct.input.dispatchEvent(new Event('input', { bubbles: true }));
 
-            // MTD Forecast Calculation - For Grade, MTD Forecast matches Daily Forecast
-            mFcst.input.value = currentDailyFcst || '';
-            mFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
-
         } catch (e) {
             console.warn("Auto-calc MTD failed", e);
             // Fallback: Weighted calc with just current values
@@ -3215,8 +3216,6 @@ function renderCrushingGradeForm(dept, metricName, card) {
 
             mAct.input.value = res.toFixed(2);
             mAct.input.dispatchEvent(new Event('input', { bubbles: true }));
-            mFcst.input.value = currentDailyFcst;
-            mFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
         }
     };
 
