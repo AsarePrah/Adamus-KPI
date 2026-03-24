@@ -56,6 +56,7 @@ const DEPT_METRICS = {
         "Graders",
         "Dozers",
         "Drill Rigs",
+        "Dewatering Pumps",
         "Crusher",
         "Mill"
     ],
@@ -501,7 +502,7 @@ function renderLoginScreen() {
     const title = document.createElement('h2');
     title.textContent = 'Adamus KPI Login';
     title.style.marginBottom = '20px';
-    title.style.color = '#2563eb';
+    title.style.color = 'black';
     container.appendChild(title);
 
     const username = DOM.createInputGroup('Username', 'login-username');
@@ -531,7 +532,7 @@ function renderLoginScreen() {
     forgotLink.textContent = 'Forgot Password?';
     forgotLink.style.display = 'block';
     forgotLink.style.marginTop = '15px';
-    forgotLink.style.color = '#2563eb';
+    forgotLink.style.color = 'black';
     forgotLink.style.cursor = 'pointer';
     forgotLink.style.fontSize = '13px';
     forgotLink.onclick = () => {
@@ -574,7 +575,7 @@ function renderLoginScreen() {
     createLink.textContent = "New User? Create Account";
     createLink.style.display = 'block';
     createLink.style.marginTop = '15px';
-    createLink.style.color = '#2563eb';
+    createLink.style.color = 'black';
     createLink.style.textDecoration = 'none';
     createLink.style.fontSize = '13px';
     createLink.style.cursor = 'pointer';
@@ -586,7 +587,7 @@ function renderLoginScreen() {
     dirLink.textContent = "Users Directory";
     dirLink.style.display = 'block';
     dirLink.style.marginTop = '15px';
-    dirLink.style.color = '#2563eb';
+    dirLink.style.color = 'black';
     dirLink.style.textDecoration = 'none';
     dirLink.style.fontSize = '13px';
     dirLink.style.cursor = 'pointer';
@@ -1195,7 +1196,7 @@ window.loadMetricView = function (metric) {
                 <th style="padding: 12px; text-align: left;">Budget Var %</th>
                 <th style="padding: 12px; text-align: left;">Day-2</th>
             `;
-        } else if ((metric === "Light Vehicles" || metric === "Tipper Trucks" || metric === "Prime Excavators" || metric === "Anx Excavators" || metric === "Dump Trucks" || metric === "ART Dump Trucks" || metric === "Wheel Loaders" || metric === "Graders" || metric === "Dozers" || metric === "Drill Rigs") && STATE.currentDept === "Engineering") {
+        } else if ((metric === "Light Vehicles" || metric === "Tipper Trucks" || metric === "Prime Excavators" || metric === "Anx Excavators" || metric === "Dump Trucks" || metric === "ART Dump Trucks" || metric === "Wheel Loaders" || metric === "Graders" || metric === "Dozers" || metric === "Drill Rigs" || metric === "Dewatering Pumps") && STATE.currentDept === "Engineering") {
             tableHead.innerHTML = `
                 <th style="padding: 12px; text-align: left;">KPI</th>
                 <th style="padding: 12px; text-align: left;">Date</th>
@@ -1341,6 +1342,8 @@ function renderKPIForm(dept, metricName) {
         renderEngineeringDozersForm(dept, metricName, card);
     } else if (dept === "Engineering" && metricName === "Drill Rigs") {
         renderEngineeringDrillRigsForm(dept, metricName, card);
+    } else if (dept === "Engineering" && metricName === "Dewatering Pumps") {
+        renderEngineeringDewateringPumpsForm(dept, metricName, card);
     } else if (dept === "Engineering" && metricName === "Crusher") {
         renderEngineeringCrusherForm(dept, metricName, card);
     } else if (dept === "Engineering" && metricName === "Mill") {
@@ -3113,6 +3116,8 @@ function renderCrushingGradeForm(dept, metricName, card) {
     budgVar.input.readOnly = true;
     attachVarianceListener(outlook.input, fullFcst.input, budgVar.input);
 
+    const day2 = DOM.createInputGroup("Day-2", `input-${dept}-day2`, "number");
+
     // Auto-fetch Fixed Inputs for Daily Forecast (and Full Forecast/Budget)
     const fetchFixedInputs = async () => {
         const dateVal = date.input.value;
@@ -3139,6 +3144,23 @@ function renderCrushingGradeForm(dept, metricName, card) {
                 fullFcst.input.value = fixedRecord.data.full_forecast || '';
                 fullBudg.input.value = fixedRecord.data.full_budget || '';
                 fullFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            
+            if (d.getDate() === 1) {
+                day2.input.value = 0;
+            } else {
+                const prevDate = new Date(d);
+                prevDate.setDate(d.getDate() - 1);
+                const pY = prevDate.getFullYear();
+                const pM = String(prevDate.getMonth() + 1).padStart(2, '0');
+                const pD = String(prevDate.getDate()).padStart(2, '0');
+                const prevDateStr = `${pY}-${pM}-${pD}`;
+                const prevRecord = records.find(r => r.metric_name === metricName && r.subtype !== 'fixed_input' && r.date === prevDateStr);
+                if (prevRecord && prevRecord.data) {
+                    day2.input.value = prevRecord.data.daily_actual || 0;
+                } else {
+                    day2.input.value = 0;
+                }
             }
         } catch (e) {
             console.error("Error fetching fixed inputs", e);
@@ -3235,7 +3257,7 @@ function renderCrushingGradeForm(dept, metricName, card) {
     add(kpi); add(date); grid.appendChild(document.createElement('div')); grid.appendChild(document.createElement('div')); // Spacers
     add(dActT); add(dAct); add(dFcst); add(dVar);
     add(mAct); add(mFcst); add(mVar); grid.appendChild(document.createElement('div')); // Spacer
-    add(outlook); add(fullFcst); add(fullBudg); add(budgVar);
+    add(outlook); add(fullFcst); add(fullBudg); add(budgVar); add(day2);
 
     card.appendChild(grid);
 
@@ -3267,7 +3289,8 @@ function renderCrushingGradeForm(dept, metricName, card) {
                 outlook: parseFloat(outlook.input.value),
                 full_forecast: parseFloat(fullFcst.input.value),
                 full_budget: parseFloat(fullBudg.input.value),
-                var3: budgVar.input.value
+                var3: budgVar.input.value,
+                day2: parseFloat(day2.input.value)
             }
         };
 
@@ -3288,6 +3311,7 @@ function renderCrushingGradeForm(dept, metricName, card) {
             fullFcst.input.value = '';
             fullBudg.input.value = '';
             budgVar.input.value = '';
+            day2.input.value = '';
             date.input.value = '';
 
         } catch (e) {
@@ -3340,6 +3364,8 @@ function renderCrushingOreForm(dept, metricName, card) {
     const budgVar = DOM.createInputGroup("Var %", `input-${dept}-budg-var`, "text");
     budgVar.input.readOnly = true;
     attachVarianceListener(outlook.input, fullFcst.input, budgVar.input);
+
+    const day2 = DOM.createInputGroup("Day-2", `input-${dept}-day2`, "number");
 
     // Auto-fetch Fixed Inputs and Calculate Daily Forecast
     let priorMtdSum = 0;
@@ -3419,6 +3445,23 @@ function renderCrushingOreForm(dept, metricName, card) {
                 fullFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
             }
 
+            if (d.getDate() === 1) {
+                day2.input.value = 0;
+            } else {
+                const prevDate = new Date(d);
+                prevDate.setDate(d.getDate() - 1);
+                const pY = prevDate.getFullYear();
+                const pM = String(prevDate.getMonth() + 1).padStart(2, '0');
+                const pD = String(prevDate.getDate()).padStart(2, '0');
+                const prevDateStr = `${pY}-${pM}-${pD}`;
+                const prevRecord = records.find(r => r.metric_name === metricName && r.subtype !== 'fixed_input' && r.date === prevDateStr);
+                if (prevRecord && prevRecord.data) {
+                    day2.input.value = prevRecord.data.daily_actual || 0;
+                } else {
+                    day2.input.value = 0;
+                }
+            }
+
             // MTD Calculation
             // Filter records for same month/year, excluding current date
             const historicRecords = records.filter(r => {
@@ -3449,7 +3492,7 @@ function renderCrushingOreForm(dept, metricName, card) {
     add(dAct); add(dFcst); add(dVar);
     add(mAct); add(mFcst); add(mVar);
     add(outlook); add(fullFcst); add(fullBudg);
-    add(budgVar);
+    add(budgVar); add(day2);
 
     card.appendChild(grid);
 
@@ -3473,7 +3516,8 @@ function renderCrushingOreForm(dept, metricName, card) {
                     full_budget: fullBudg.input.value,
                     var1: dVar.input.value,
                     var2: mVar.input.value,
-                    var3: budgVar.input.value
+                    var3: budgVar.input.value,
+                    day2: parseFloat(day2.input.value)
                 }
             };
 
@@ -3492,6 +3536,7 @@ function renderCrushingOreForm(dept, metricName, card) {
             fullFcst.input.value = '';
             fullBudg.input.value = '';
             budgVar.input.value = '';
+            day2.input.value = '';
             date.input.value = '';
 
         } catch (e) {
@@ -7986,6 +8031,250 @@ function renderEngineeringDrillRigsForm(dept, metricName, card) {
     card.appendChild(btnContainer);
 }
 
+function renderEngineeringDewateringPumpsForm(dept, metricName, card) {
+    const grid = document.createElement('div');
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = 'repeat(4, 1fr)';
+    grid.style.gap = '15px';
+    grid.style.marginBottom = '20px';
+
+    // Helper to add to grid
+    const add = (group) => grid.appendChild(group.container);
+
+    // Row 1
+    const kpi = DOM.createInputGroup("KPI", `input-${dept}-kpi`, "text");
+    kpi.input.value = metricName;
+    kpi.input.readOnly = true;
+
+    const date = DOM.createInputGroup("Date", `input-${dept}-date`, "date");
+    date.input.value = '';
+
+    // Row 2
+    const dQty = DOM.createInputGroup("Qty Available", `input-${dept}-qty-avail`, "number");
+    const dAct = DOM.createInputGroup("Daily Actual(%)", `input-${dept}-daily-act-pct`, "text"); // Changed to text
+    const dFcst = DOM.createInputGroup("Daily Forecast(%)", `input-${dept}-daily-fcst-pct`, "text"); // Changed to text
+    const dVar = DOM.createInputGroup("Var %", `input-${dept}-daily-var`, "text");
+    dVar.input.readOnly = true;
+    attachVarianceListener(dAct.input, dFcst.input, dVar.input);
+
+    // Auto-Fetch Fixed Inputs on Date Change for Dewatering Pumps
+    date.input.addEventListener('change', async () => {
+        const dateVal = date.input.value;
+        if (!dateVal) return;
+
+        try {
+            const records = await fetchKPIRecords(dept);
+            const fixedInputs = records.filter(r => r.subtype === 'fixed_input');
+
+            const [y, m, d] = dateVal.split('-');
+            const searchMonth = `${y}-${m}`;
+
+            const target = fixedInputs.find(r => {
+                if (r.metric_name.trim().toLowerCase() !== metricName.trim().toLowerCase()) return false;
+                return r.date && r.date.startsWith(searchMonth);
+            });
+
+            if (target && target.data) {
+                if (target.data.full_forecast != null) {
+                    let val = target.data.full_forecast;
+                    if (typeof val === 'number') {
+                        val = val + '%';
+                    } else if (typeof val === 'string' && !val.includes('%')) {
+                        val = val + '%';
+                    }
+
+                    dFcst.input.value = val;
+                    dFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
+
+                    // Also populate Full Forecast (b) if it exists
+                    if (typeof fullFcst !== 'undefined') {
+                        fullFcst.input.value = val;
+                        fullFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                }
+
+                // Populate Full Budget (c) if it exists
+                if (target.data.full_budget != null) {
+                    if (typeof fullBudg !== 'undefined') {
+                        fullBudg.input.value = target.data.full_budget;
+                        fullBudg.input.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                }
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    });
+
+    // Row 3
+    const mAct = DOM.createInputGroup("MTD Actual", `input-${dept}-mtd-act`, "text"); // Changed to text
+    const mFcst = DOM.createInputGroup("MTD Forecast", `input-${dept}-mtd-fcst`, "text"); // Changed to text
+    const mVar = DOM.createInputGroup("Var %", `input-${dept}-mtd-var`, "text");
+    mVar.input.readOnly = true;
+    attachVarianceListener(mAct.input, mFcst.input, mVar.input);
+
+    // Auto-Populate MTD Forecast from Daily Forecast for Dewatering Pumps
+    dFcst.input.addEventListener('input', () => {
+        let val = dFcst.input.value;
+        if (val) {
+            if (!val.includes('%')) {
+                val = val + '%';
+            }
+            mFcst.input.value = val;
+            mFcst.input.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+            mFcst.input.value = '';
+        }
+    });
+
+
+    // Auto-Calculate MTD Actual (Average)
+    const updateMTDActual = async () => {
+        const dateVal = date.input.value;
+        const currentDailyValStr = dAct.input.value;
+
+        if (!dateVal) return;
+
+        // Parse current daily actual (remove % if present)
+        let currentDailyVal = 0;
+        if (currentDailyValStr) {
+            currentDailyVal = parseFloat(currentDailyValStr.replace('%', ''));
+        }
+        if (isNaN(currentDailyVal)) currentDailyVal = 0;
+
+        const [y, m, d] = dateVal.split(' ').length > 1 ? new Date(dateVal).toISOString().split('T')[0].split('-').map(Number) : dateVal.split('-').map(Number);
+
+        // Logic for 1st of month: Mirror Daily
+        if (d === 1) {
+            if (currentDailyValStr) {
+                mAct.input.value = Math.round(currentDailyVal) + '%';
+                mAct.input.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            return;
+        }
+
+        // Logic for subsequent days: Average of (Previous Records + Current)
+        try {
+            const records = await fetchKPIRecords(dept);
+            const selectedMonth = m - 1; // JS Month 0-11
+            const selectedYear = y;
+
+            // Filter for previous days in same month
+            const matchedRecords = records.filter(r => {
+                if (r.metric_name !== metricName) return false;
+                if (!r.data || r.data.daily_actual == null) return false;
+                if (r.subtype === 'fixed_input') return false; // Exclude fixed inputs
+
+                const [rY, rM, rD] = r.date.split('-').map(Number);
+
+                // Check month/year match
+                if ((rM - 1) !== selectedMonth || rY !== selectedYear) return false;
+
+                // Check if strictly before current date
+                if (rD >= d) return false;
+
+                return true;
+            });
+
+            // Sum previous
+            let sum = 0;
+            let count = 0;
+
+            matchedRecords.forEach(r => {
+                let val = r.data.daily_actual;
+                // Handle various formats
+                if (typeof val === 'string') {
+                    val = parseFloat(val.replace('%', ''));
+                }
+
+                if (!isNaN(val)) {
+                    sum += val;
+                    count++;
+                }
+            });
+
+            // Add Current Input
+            sum += currentDailyVal;
+            count += 1;
+
+            const average = count > 0 ? (sum / count) : 0;
+            mAct.input.value = Math.round(average) + '%';
+            mAct.input.dispatchEvent(new Event('input', { bubbles: true }));
+
+        } catch (e) {
+            console.error("Error calculating MTD Actual", e);
+        }
+    };
+
+    // Attach listeners
+    dAct.input.addEventListener('input', updateMTDActual);
+    date.input.addEventListener('change', updateMTDActual);
+
+    // Row 4
+    const fullFcst = DOM.createInputGroup("Full Forecast (b)", `input-${dept}-full-fcst`, "text"); // Changed to text
+    const fullBudg = DOM.createInputGroup("Full Budget (c)", `input-${dept}-full-budg`, "number");
+
+    // Add to Grid
+    add(kpi); add(date); grid.appendChild(document.createElement('div')); grid.appendChild(document.createElement('div')); // Spacers
+    add(dQty); add(dAct); add(dFcst); add(dVar);
+    add(mAct); add(mFcst); add(mVar); grid.appendChild(document.createElement('div')); // Spacer
+    add(fullFcst); add(fullBudg); grid.appendChild(document.createElement('div')); grid.appendChild(document.createElement('div')); // Spacers
+
+    card.appendChild(grid);
+
+    // Save Button
+    const btnContainer = document.createElement('div');
+    const saveBtn = DOM.createButton("Save Record", async () => {
+        const dateVal = date.input.value;
+        if (!dateVal) {
+            DOM.showAlert("Watch Out!", "Please select a date.", "warning");
+            return;
+        }
+
+        const record = {
+            metric_name: metricName,
+            date: dateVal,
+            department: dept,
+            data: {
+                qty_available: dQty.input.value,
+                daily_actual: dAct.input.value,
+                daily_forecast: dFcst.input.value,
+                var1: dVar.input.value,
+                mtd_actual: mAct.input.value,
+                mtd_forecast: mFcst.input.value,
+                var2: mVar.input.value,
+                full_forecast: fullFcst.input.value,
+                full_budget: fullBudg.input.value
+                // var3: removed
+            }
+        };
+
+        try {
+            await saveKPIRecord(dept, record);
+            DOM.showAlert("Success!", "Record saved successfully!", "success");
+            loadRecentRecords(dept);
+
+            // Clear inputs
+            dQty.input.value = '';
+            dAct.input.value = '';
+            dFcst.input.value = '';
+            dVar.input.value = '';
+            mAct.input.value = '';
+            mFcst.input.value = '';
+            mVar.input.value = '';
+            fullFcst.input.value = '';
+            fullBudg.input.value = '';
+            // date.input.value = ''; // Keep date selected or clear?
+
+        } catch (error) {
+            console.error(error);
+            DOM.showToast("Failed to save record.", "error");
+        }
+    });
+    btnContainer.appendChild(saveBtn);
+    card.appendChild(btnContainer);
+}
+
 function renderEngineeringCrusherForm(dept, metricName, card) {
     const grid = document.createElement('div');
     grid.style.display = 'grid';
@@ -8875,11 +9164,12 @@ async function loadRecentRecords(dept) {
                 <th style="padding: 12px; text-align: left;">F.Fcst</th>
                 <th style="padding: 12px; text-align: left;">F.Budg</th>
                 <th style="padding: 12px; text-align: left;">Var%</th>
+                <th style="padding: 12px; text-align: left;">Day-2</th>
                 <th style="padding: 12px; text-align: left;">Action</th>
             `;
 
             if (filteredRecords.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="12" style="padding: 12px; text-align: center;">No records found for ${STATE.currentMetric}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="13" style="padding: 12px; text-align: center;">No records found for ${STATE.currentMetric}</td></tr>`;
                 return;
             }
 
@@ -8905,6 +9195,7 @@ async function loadRecentRecords(dept) {
                     <td style="padding: 12px;">${DOM.formatNumber(r.data.full_forecast)}</td>
                     <td style="padding: 12px;">${DOM.formatNumber(r.data.full_budget)}</td>
                     <td style="padding: 12px;">${r.data.var3 || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.day2)}</td>
                     <td style="padding: 12px;">
                         <button onclick="editRecord(${r.id})" style="margin-right:8px; padding:2px 6px; cursor:pointer;" title="Edit">✏️</button>
                         <button onclick="deleteRecord(${r.id})" style="padding:2px 6px; cursor:pointer; color:red;" title="Delete">🗑️</button>
@@ -8992,11 +9283,12 @@ async function loadRecentRecords(dept) {
                 <th style="padding: 12px; text-align: left;">F.Fcst</th>
                 <th style="padding: 12px; text-align: left;">F.Budg</th>
                 <th style="padding: 12px; text-align: left;">Var%</th>
+                <th style="padding: 12px; text-align: left;">Day-2</th>
                 <th style="padding: 12px; text-align: left;">Action</th>
             `;
 
             if (filteredRecords.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="13" style="padding: 12px; text-align: center;">No records found for ${STATE.currentMetric}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="14" style="padding: 12px; text-align: center;">No records found for ${STATE.currentMetric}</td></tr>`;
                 return;
             }
 
@@ -9024,6 +9316,7 @@ async function loadRecentRecords(dept) {
                     <td style="padding: 12px;">${DOM.formatNumber(r.data.full_forecast)}</td>
                     <td style="padding: 12px;">${DOM.formatNumber(r.data.full_budget)}</td>
                     <td style="padding: 12px;">${r.data.var3 || '-'}</td>
+                    <td style="padding: 12px;">${DOM.formatNumber(r.data.day2)}</td>
                     <td style="padding: 12px;">
                         <button onclick="editRecord(${r.id})" style="margin-right:8px; padding:2px 6px; cursor:pointer;" title="Edit">✏️</button>
                         <button onclick="deleteRecord(${r.id})" style="padding:2px 6px; cursor:pointer; color:red;" title="Delete">🗑️</button>
@@ -9513,7 +9806,7 @@ async function loadRecentRecords(dept) {
         }
 
         // Handling for Anx Excavators OR Dump Trucks OR ART Dump Trucks OR Wheel Loaders OR Dozers OR Graders (Identical columns)
-        if (STATE.currentMetric === 'Anx Excavators' || STATE.currentMetric === 'Dump Trucks' || STATE.currentMetric === 'ART Dump Trucks' || STATE.currentMetric === 'Wheel Loaders' || STATE.currentMetric === 'Dozers' || STATE.currentMetric === 'Graders' || STATE.currentMetric === 'Drill Rigs') {
+        if (STATE.currentMetric === 'Anx Excavators' || STATE.currentMetric === 'Dump Trucks' || STATE.currentMetric === 'ART Dump Trucks' || STATE.currentMetric === 'Wheel Loaders' || STATE.currentMetric === 'Dozers' || STATE.currentMetric === 'Graders' || STATE.currentMetric === 'Drill Rigs' || STATE.currentMetric === 'Dewatering Pumps') {
             filteredRecords = records.filter(r => r.metric_name === STATE.currentMetric && r.subtype !== 'fixed_input');
 
             // Date | Qty Avail | D.Act(%) | D.Fcst(%) | Var% | MTD.Act | MTD.Fcst | Var% | F.Fcst | F.Budg | Action
@@ -10519,11 +10812,10 @@ async function renderStatusCards(dept, metricName, container) {
     cardRow.style.justifyContent = 'flex-start'; // or center
 
     // Determine Target Date Logic
-    // Interpretation: Always show T-1 (Yesterday's) MTD Data.
-    // If T-1 is missing, show latest available in the same month.
+    // Interpretation: Always show latest MTD Data for the current month.
     const today = new Date();
     const targetDate = new Date(today);
-    targetDate.setDate(today.getDate() - 1); // Yesterday
+    // targetDate.setDate(today.getDate() - 1); // Yesterday removed so we can get today's data too
 
     const y = targetDate.getFullYear();
     const m = String(targetDate.getMonth() + 1).padStart(2, '0');
@@ -10542,7 +10834,7 @@ async function renderStatusCards(dept, metricName, container) {
     dateHelper.style.width = '100%';
 
     try {
-        // Fetch KPI records for the whole range (Month Start -> Yesterday)
+        // Fetch KPI records for the whole range (Month Start -> Today)
         const records = await fetchKPIRecords(dept, monthStartStr, targetDateStr);
 
         // Filter for specific metric and sort by Date Descending to get latest
@@ -10555,23 +10847,48 @@ async function renderStatusCards(dept, metricName, container) {
             return 0;
         });
 
-        const record = relevantRecords[0]; // Latest record
-
         // Data Extraction
         let mtdAct = 0;
         let mtdFcst = 0;
         let variance = 0;
-        let displayDate = targetDateStr;
+        let displayDateAct = null;
+        let displayDateFcst = null;
 
-        if (record && record.data) {
-            mtdAct = parseFloat(record.data.mtd_actual) || 0;
-            mtdFcst = parseFloat(record.data.mtd_forecast) || 0;
-            // Variance = MTD Actual - MTD Forecast
-            variance = mtdAct - mtdFcst;
-            displayDate = record.date;
+        // Find the latest record that has a populated MTD Actual
+        const recordAct = relevantRecords.find(r => r.data && r.data.mtd_actual !== undefined && r.data.mtd_actual !== null && r.data.mtd_actual !== '');
+        if (recordAct) {
+            mtdAct = parseFloat(recordAct.data.mtd_actual) || 0;
+            displayDateAct = recordAct.date;
+        }
+
+        // Find the latest record that has a populated MTD Forecast
+        const recordFcst = relevantRecords.find(r => r.data && r.data.mtd_forecast !== undefined && r.data.mtd_forecast !== null && r.data.mtd_forecast !== '');
+        if (recordFcst) {
+            mtdFcst = parseFloat(recordFcst.data.mtd_forecast) || 0;
+            displayDateFcst = recordFcst.date;
+        }
+
+        variance = mtdAct - mtdFcst;
+
+        if (recordAct || recordFcst) {
+            // Use the most recent of the two dates for the display label
+            let displayDate = targetDateStr;
+            if (displayDateAct && displayDateFcst) {
+                displayDate = displayDateAct > displayDateFcst ? displayDateAct : displayDateFcst;
+            } else if (displayDateAct) {
+                displayDate = displayDateAct;
+            } else if (displayDateFcst) {
+                displayDate = displayDateFcst;
+            }
             dateHelper.textContent = `Data as of: ${displayDate}`;
         } else {
             dateHelper.textContent = `No data available for ${monthStartStr} to ${targetDateStr}`;
+        }
+
+        // Set fractional precision based on metric name
+        let fractionDigits = 0;
+        if (metricName.toLowerCase().includes('grade')) {
+            fractionDigits = 2;
         }
 
         // Helper to create single card
@@ -10607,7 +10924,10 @@ async function renderStatusCards(dept, metricName, container) {
 
             const valDiv = document.createElement('div');
             // Format number
-            valDiv.textContent = value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+            valDiv.textContent = value.toLocaleString(undefined, { 
+                maximumFractionDigits: fractionDigits,
+                minimumFractionDigits: fractionDigits
+            });
             valDiv.style.fontSize = '24px';
             valDiv.style.fontWeight = 'bold';
 
