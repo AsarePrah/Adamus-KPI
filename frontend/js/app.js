@@ -10598,7 +10598,7 @@ function renderGMSection(table, areaLabel, deptKey, records, dateStr) {
     `;
 
     // Special Columns Handling
-    if (deptKey === "Milling_CIL") {
+    if (deptKey === "Milling_CIL" || deptKey === "Crushing") {
         headerRowHTML += `<th style="${thStyle}">Day-2</th>`;
     } else if (deptKey === "Engineering") {
         headerRowHTML += `<th style="${thStyle}">Qty Available</th>`;
@@ -10716,7 +10716,7 @@ function renderGMSection(table, areaLabel, deptKey, records, dateStr) {
         }
 
         // Extra Column (Day-2, Qty Avail, Grade-7, or Spacer)
-        if (deptKey === "Milling_CIL") {
+        if (deptKey === "Milling_CIL" || deptKey === "Crushing") {
             rowHTML += `<td style="${cellStyle}">${safeFormat(d.day2)}</td>`;
         } else if (deptKey === "Engineering") {
             rowHTML += `<td style="${cellStyle}">${safeFormat(d.qty_available)}</td>`;
